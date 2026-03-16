@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: suntran-sim
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: VITE_MAPBOX_TOKEN
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true

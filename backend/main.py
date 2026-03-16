@@ -7,8 +7,9 @@ from typing import Optional
 import pandas as pd
 from fastapi import FastAPI, HTTPException, UploadFile, File, Depends, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, FileResponse
 from fastapi.security import OAuth2PasswordRequestForm
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from auth import authenticate_user, create_access_token, get_current_user
@@ -505,3 +506,12 @@ def get_coverage_gaps():
 
 # ── Register protected router ──────────────────────────────────────────────────
 app.include_router(protected)
+
+# ── Serve built React frontend (production) ────────────────────────────────────
+STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
+if os.path.isdir(STATIC_DIR):
+    app.mount("/assets", StaticFiles(directory=os.path.join(STATIC_DIR, "assets")), name="assets")
+
+    @app.get("/{full_path:path}")
+    async def serve_spa(full_path: str):
+        return FileResponse(os.path.join(STATIC_DIR, "index.html"))
