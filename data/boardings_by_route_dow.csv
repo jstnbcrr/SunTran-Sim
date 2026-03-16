@@ -1,0 +1,62 @@
+route,day_num,day_name,avg_in,avg_out,total_in,total_out
+Route 1 Red Cliffs (A),0,Monday,10.52,10.82,6259,6435
+Route 1 Red Cliffs (A),1,Tuesday,9.94,10.09,6124,6216
+Route 1 Red Cliffs (A),2,Wednesday,10.9,11.92,6604,7225
+Route 1 Red Cliffs (A),3,Thursday,9.91,10.41,5711,5999
+Route 1 Red Cliffs (A),4,Friday,10.24,11.19,6092,6657
+Route 1 Red Cliffs (A),5,Saturday,8.69,9.19,5171,5467
+Route 1 Red Cliffs (B),0,Monday,10.43,8.79,6988,5888
+Route 1 Red Cliffs (B),1,Tuesday,10.06,7.82,7085,5506
+Route 1 Red Cliffs (B),2,Wednesday,10.55,8.46,7354,5895
+Route 1 Red Cliffs (B),3,Thursday,10.35,7.74,6823,5101
+Route 1 Red Cliffs (B),4,Friday,10.22,8.23,7131,5742
+Route 1 Red Cliffs (B),5,Saturday,8.57,7.48,5871,5121
+Route 2 Riverside,0,Monday,10.89,13.08,13583,16309
+Route 2 Riverside,1,Tuesday,10.58,11.87,13891,15588
+Route 2 Riverside,2,Wednesday,10.53,11.71,13726,15266
+Route 2 Riverside,3,Thursday,11.08,12.6,13627,15492
+Route 2 Riverside,4,Friday,10.26,11.86,12991,15021
+Route 2 Riverside,5,Saturday,10.16,12.8,12657,15947
+Route 3 West Side Connector (Inbound),0,Monday,10.21,9.28,6711,6094
+Route 3 West Side Connector (Inbound),1,Tuesday,9.79,9.05,6679,6173
+Route 3 West Side Connector (Inbound),2,Wednesday,10.33,9.37,7038,6379
+Route 3 West Side Connector (Inbound),3,Thursday,10.23,9.24,6570,5930
+Route 3 West Side Connector (Inbound),4,Friday,9.51,8.48,6375,5683
+Route 3 West Side Connector (Inbound),5,Saturday,7.68,7.12,5110,4738
+Route 3 West Side Connector (Outbound),0,Monday,10.88,10.34,6353,6038
+Route 3 West Side Connector (Outbound),1,Tuesday,13.21,12.81,8006,7761
+Route 3 West Side Connector (Outbound),2,Wednesday,12.0,11.86,7258,7173
+Route 3 West Side Connector (Outbound),3,Thursday,12.28,11.73,7063,6745
+Route 3 West Side Connector (Outbound),4,Friday,10.69,10.25,6339,6078
+Route 3 West Side Connector (Outbound),5,Saturday,10.94,12.02,6554,7200
+Route 4 Sunset,0,Monday,7.02,7.92,10295,11614
+Route 4 Sunset,1,Tuesday,6.77,7.62,10453,11769
+Route 4 Sunset,2,Wednesday,6.82,7.79,10627,12145
+Route 4 Sunset,3,Thursday,6.98,7.66,10019,10999
+Route 4 Sunset,4,Friday,6.97,7.69,10542,11632
+Route 4 Sunset,5,Saturday,5.79,6.21,8423,9031
+Route 5 Ivins,0,Monday,4.91,7.22,3875,5707
+Route 5 Ivins,1,Tuesday,4.43,6.4,3893,5616
+Route 5 Ivins,2,Wednesday,5.03,7.36,4352,6370
+Route 5 Ivins,3,Thursday,4.55,6.56,3715,5352
+Route 5 Ivins,4,Friday,4.72,7.09,3738,5614
+Route 5 Ivins,5,Saturday,4.73,6.95,3176,4668
+Route 6 Dixie Dr South,0,Monday,5.59,4.96,5179,4602
+Route 6 Dixie Dr South,1,Tuesday,5.74,4.71,5437,4468
+Route 6 Dixie Dr South,2,Wednesday,6.39,5.42,6068,5153
+Route 6 Dixie Dr South,3,Thursday,5.58,4.74,5069,4311
+Route 6 Dixie Dr South,4,Friday,6.17,5.34,5643,4883
+Route 6 Dixie Dr South,5,Saturday,5.52,4.75,4561,3926
+Route 7 Washington,0,Monday,4.7,6.51,5524,7655
+Route 7 Washington,1,Tuesday,4.15,5.81,5153,7218
+Route 7 Washington,2,Wednesday,4.59,6.58,5674,8139
+Route 7 Washington,3,Thursday,4.38,6.05,5188,7166
+Route 7 Washington,4,Friday,4.63,6.04,5667,7383
+Route 7 Washington,5,Saturday,4.29,5.48,4953,6319
+Route 8 Zion,0,Monday,6.68,7.34,4924,5406
+Route 8 Zion,1,Tuesday,6.42,6.79,4822,5096
+Route 8 Zion,2,Wednesday,6.76,7.3,5152,5560
+Route 8 Zion,3,Thursday,6.22,6.49,4415,4610
+Route 8 Zion,4,Friday,6.33,6.82,4711,5072
+Route 8 Zion,5,Saturday,6.35,6.86,4682,5059
+Route 8 Zion,6,Sunday,3.0,4.0,3,4

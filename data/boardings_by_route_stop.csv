@@ -1,0 +1,181 @@
+route,address,total_in,total_out,avg_daily_in,avg_daily_out,days
+Route 2 Riverside,Transit Center,37021,56856,110.18,169.21,336
+Route 3 West Side Connector (Outbound),Transit Center,20891,17454,62.55,52.26,334
+Route 1 Red Cliffs (A),Transit Center,19194,15043,57.12,44.77,336
+Route 3 West Side Connector (Inbound),Sunset Corner,18834,7036,56.05,20.94,336
+Route 1 Red Cliffs (B),Deseret Industries,18177,7960,54.1,23.69,336
+Route 4 Sunset,Sunset Corner,13053,19909,38.85,59.25,336
+Route 5 Ivins,Sunset Corner,12140,23598,36.13,70.23,336
+Route 6 Dixie Dr South,Sunset Corner,11370,8244,33.84,24.54,336
+Route 7 Washington,Deseret Industries,9941,20165,29.59,60.01,336
+Route 8 Zion,Lion Boulevard Springdale,7469,8575,22.56,25.91,331
+Route 7 Washington,Wal Mart 698 West Telegraph,6646,7989,19.78,23.78,336
+Route 2 Riverside,Harmons,5773,3445,17.18,10.25,336
+Route 1 Red Cliffs (B),Transit Center,5709,8589,18.54,27.89,308
+Route 8 Zion,Red Cliffs Mall (Barnes & Noble),5646,7015,17.01,21.13,332
+Route 2 Riverside,Best Western,5566,5708,16.57,16.99,336
+Route 6 Dixie Dr South,Wal-Mart,5559,5385,16.54,16.03,336
+Route 3 West Side Connector (Outbound),Sunset Corner,5463,8696,21.76,34.65,251
+Route 4 Sunset,Lins Marketplace 1930 West Sunset Boulevard,5313,6223,15.81,18.52,336
+Route 4 Sunset,Sierra Pointe,5236,4169,15.58,12.41,336
+Route 3 West Side Connector (Inbound),Transit Center,4470,9324,13.42,28.0,333
+Route 2 Riverside,112 South 300 West,4448,4584,13.28,13.68,335
+Route 3 West Side Connector (Outbound),SW Behavioral Health Center,3851,3236,11.46,9.63,336
+Route 1 Red Cliffs (A),Target 225 South River Road,3806,4104,11.33,12.21,336
+Route 4 Sunset,1300 West Sunset Boulevard,3746,5510,11.15,16.4,336
+Route 2 Riverside,Library,3493,3179,10.43,9.49,335
+Route 2 Riverside,Dixie High School,2963,1650,8.82,4.91,336
+Route 1 Red Cliffs (B),Barnes and Noble,2913,2105,8.67,6.26,336
+Route 4 Sunset,Albertsons Market 745 North Dixie Drive,2903,2350,8.64,6.99,336
+Route 6 Dixie Dr South,Jiffy Lube,2771,863,8.27,2.58,335
+Route 4 Sunset,Snow Canyon Middle School,2727,1140,9.24,3.86,295
+Route 8 Zion,1670 South 120 East (Dixie Center),2720,3353,8.22,10.13,331
+Route 1 Red Cliffs (A),Deseret Industries,2608,7061,7.79,21.08,335
+Route 8 Zion,1210 Zion Park Boulevard (Bit & Spur) Springdale,2561,502,7.9,1.55,324
+Route 2 Riverside,Bella Vista Apartments,2545,1932,7.6,5.77,335
+Route 1 Red Cliffs (B),Fossil Ridge School,2455,1984,7.31,5.9,336
+Route 3 West Side Connector (Inbound),Ace Hardware,2447,3318,7.28,9.88,336
+Route 2 Riverside,Dixie Center,2431,2013,7.24,5.99,336
+Route 1 Red Cliffs (B),Mill Creek High School,2424,2283,7.21,6.79,336
+Route 6 Dixie Dr South,Oasis Palms Apartments,2412,1011,7.24,3.04,333
+Route 3 West Side Connector (Inbound),Catholic Church,2330,1106,6.98,3.31,334
+Route 1 Red Cliffs (A),Intermountain River Road Clinic,2303,3045,6.85,9.06,336
+Route 4 Sunset,1205 North 1650 West,2285,2613,6.8,7.78,336
+Route 4 Sunset,540 North Valley View Drive,2273,1207,6.81,3.61,334
+Route 3 West Side Connector (Outbound),465 East Tabernacle,2255,2002,6.73,5.98,335
+Route 1 Red Cliffs (B),Good Shepherd Church,2221,1354,6.63,4.04,335
+Route 4 Sunset,Summer Hills Apartments,2142,1018,6.38,3.03,336
+Route 4 Sunset,Firehouse Park,2071,2028,6.18,6.05,335
+Route 2 Riverside,Jack in the Box,1910,2295,5.68,6.83,336
+Route 6 Dixie Dr South,Dixie Drive @ Black Ridge Drive,1905,1915,7.41,7.45,257
+Route 2 Riverside,Dr Volunteer Clinic 1060 East Riverside Drive,1904,1592,5.68,4.75,335
+Route 2 Riverside,243 West 400 South,1858,763,5.61,2.31,331
+Route 3 West Side Connector (Inbound),990 East Tabernacle,1856,3674,5.57,11.03,333
+Route 2 Riverside,660 South Main,1784,1786,5.31,5.32,336
+Route 4 Sunset,Sunset @ Lava Flow,1769,2358,5.28,7.04,335
+Route 3 West Side Connector (Outbound),85 South 700 East,1735,1145,5.31,3.5,327
+Route 3 West Side Connector (Outbound),245 East Tabernacle,1724,1423,5.22,4.31,330
+Route 5 Ivins,Lins Marketplace 1930 West Sunset Boulevard,1704,1167,5.13,3.52,332
+Route 4 Sunset,Valley View Dr @ Stonebridge Drive,1703,823,5.08,2.46,335
+Route 4 Sunset,1912 West 1575 North,1702,1619,5.1,4.85,334
+Route 4 Sunset,Phoenix Plaza,1698,2591,5.1,7.78,333
+Route 8 Zion,300 North State Street LaVerkin (Eastbound),1689,691,5.18,2.12,326
+Route 1 Red Cliffs (A),120 South 700 East,1683,770,5.05,2.31,333
+Route 3 West Side Connector (Inbound),420 East Tabernacle,1673,2157,4.98,6.42,336
+Route 6 Dixie Dr South,Green Valley Market,1664,1003,4.98,3.0,334
+Route 4 Sunset,950 North Dixie Downs Road,1652,1623,4.95,4.86,334
+Route 1 Red Cliffs (A),Outback 232 Red Cliffs Drive,1628,2709,4.85,8.06,336
+Route 1 Red Cliffs (B),Zion Medical Center,1592,1468,4.74,4.37,336
+Route 4 Sunset,Green Valley Market,1569,1417,4.67,4.22,336
+Route 6 Dixie Dr South,IHC Sunset Clinic,1546,713,4.68,2.16,330
+Route 3 West Side Connector (Outbound),Subway Outbound,1540,1743,4.6,5.2,335
+Route 8 Zion,700 West State Street Hurricane (Eastbound),1511,932,4.83,2.98,313
+Route 7 Washington,Bluff View/Victoria Lane,1510,1448,4.52,4.34,334
+Route 1 Red Cliffs (B),Security Service Credit Union,1483,2527,4.41,7.52,336
+Route 3 West Side Connector (Inbound),Sandtown,1403,546,4.21,1.64,333
+Route 1 Red Cliffs (A),740 East 700 South,1387,793,4.22,2.41,329
+Route 8 Zion,3400 West Hurricane (Walmart),1380,1487,4.19,4.52,329
+Route 4 Sunset,Housing Authority 975 North 1725 West,1350,1234,4.03,3.68,335
+Route 7 Washington,Community Center,1337,1367,4.0,4.09,334
+Route 3 West Side Connector (Outbound),City Office Outbound,1325,1836,4.03,5.58,329
+Route 3 West Side Connector (Inbound),Subway Inbound,1303,1209,3.9,3.62,334
+Route 1 Red Cliffs (B),Promenade 245 North Red Cliffs Dr (Red Lobster),1299,2019,3.87,6.01,336
+Route 4 Sunset,Snow Canyon High School,1283,1110,4.23,3.66,303
+Route 5 Ivins,101_Lightfoot�s Chevron,1278,891,3.83,2.67,334
+Route 3 West Side Connector (Outbound),244 West 200 North,1261,1666,3.75,4.96,336
+Route 1 Red Cliffs (B),245 North 2450 East,1251,1140,3.75,3.41,334
+Route 7 Washington,190 North 1100 East,1225,757,3.65,2.25,336
+Route 2 Riverside,776 East 600 South,1215,638,3.67,1.93,331
+Route 2 Riverside,Rec Center,1203,738,3.79,2.33,317
+Route 6 Dixie Dr South,Homestead Townhomes,1200,1975,3.83,6.31,313
+Route 1 Red Cliffs (A),St. George Clinic,1198,1245,3.63,3.77,330
+Route 3 West Side Connector (Inbound),210 East Tabernacle,1197,1496,3.63,4.53,330
+Route 8 Zion,5300 West Regional Park Road DMV Hurricane,1163,1179,3.58,3.63,325
+Route 3 West Side Connector (Inbound),Post Office,1154,1322,3.44,3.95,335
+Route 8 Zion,700 West State Street Hurricane (Westbound),1146,1124,3.54,3.47,324
+Route 3 West Side Connector (Inbound),City Office Inbound,1125,1173,3.49,3.64,322
+Route 5 Ivins,425 South 200 East,1119,1230,3.35,3.68,334
+Route 7 Washington,135 East 300 North,1105,537,3.4,1.65,325
+Route 2 Riverside,55 West 400 South,1082,601,3.29,1.83,329
+Route 5 Ivins,Ivins City Office,1080,896,3.33,2.77,324
+Route 3 West Side Connector (Outbound),Opera House,1010,1033,3.03,3.1,333
+Route 4 Sunset,Carls Jr 1624 West Sunset Boulevard,986,1638,2.97,4.93,332
+Route 7 Washington,Costco 850 North 2860 East,955,1310,2.88,3.95,332
+Route 1 Red Cliffs (B),449 North 2450 East,946,1017,2.88,3.09,329
+Route 7 Washington,51 East Telegraph/Post Office,941,1370,2.81,4.09,335
+Route 5 Ivins,795 South 200 East,940,877,2.93,2.73,321
+Route 1 Red Cliffs (A),Red Cliff Mall,937,2317,2.8,6.92,335
+Route 8 Zion,Kolob Terrace Road Virgin (Eastbound),933,471,3.31,1.67,282
+Route 4 Sunset,Cache Valley Bank,890,2230,2.89,7.24,308
+Route 2 Riverside,Avalon Apartments,886,1326,2.76,4.13,321
+Route 7 Washington,Bio Life 816 North 2860 East,841,1320,2.54,3.99,331
+Route 8 Zion,Buena Vista (Boiler Park) Washington,840,866,2.91,3.0,289
+Route 2 Riverside,The VFW / Lions Club,836,982,2.63,3.09,318
+Route 8 Zion,300 North State Street LaVerkin (Westbound),836,1295,2.62,4.06,319
+Route 7 Washington,Kings Row @ 1100 East & Kings Highway,827,822,2.49,2.48,332
+Route 7 Washington,Library 250 North 300 East,792,926,2.51,2.93,316
+Route 5 Ivins,1250 East Snow Canyon Parkway,740,804,2.39,2.6,309
+Route 2 Riverside,950 East 700 South,733,378,2.46,1.27,298
+Route 7 Washington,Buena Vista Boulevard/North Millcreek Springs Drive,725,568,2.38,1.86,305
+Route 6 Dixie Dr South,Dairy Queen,723,811,2.34,2.62,309
+Route 4 Sunset,540 North Dixie Drive,700,1009,2.14,3.09,327
+Route 3 West Side Connector (Inbound),710 East Tabernacle,691,2636,2.06,7.87,335
+Route 1 Red Cliffs (B),25 North 2450 East,668,654,2.09,2.04,320
+Route 4 Sunset,Paradise Canyon Elementary,631,718,2.1,2.39,300
+Route 1 Red Cliffs (A),04_592 South 700 East,624,656,2.07,2.18,301
+Route 7 Washington,Telegraph & Palo Verde,620,802,2.0,2.59,310
+Route 4 Sunset,Verizon Store,607,416,2.07,1.42,293
+Route 5 Ivins,390 W Old Highway 91,605,611,1.91,1.93,317
+Route 7 Washington,55 West Buena Vista Boulevard/North Main,597,494,1.93,1.59,310
+Route 7 Washington,Cactus Lane/Quail Ridge Drive,595,682,1.92,2.2,310
+Route 1 Red Cliffs (A),320 South 700 East,593,256,2.15,0.93,276
+Route 6 Dixie Dr South,1675 South Dixie Drive,591,196,2.12,0.7,279
+Route 8 Zion,Kolob Terrace Road Virgin (Westbound),590,1256,2.0,4.26,295
+Route 7 Washington,151 West Telegraph,581,448,2.08,1.6,280
+Route 2 Riverside,631 East 100 South,575,478,2.21,1.84,260
+Route 2 Riverside,900 East Student Housing,575,662,2.08,2.39,277
+Route 4 Sunset,2000 North Lava Flow Drive,566,574,2.07,2.09,274
+Route 5 Ivins,Veterans Center,562,731,1.71,2.22,329
+Route 3 West Side Connector (Outbound),402 North 500 West,518,761,1.64,2.41,316
+Route 5 Ivins,Black Desert Resort,487,623,1.59,2.03,307
+Route 5 Ivins,Vista Elementary,487,170,3.1,1.08,157
+Route 7 Washington,Cactus Lane/North Cactus Lane,487,453,1.6,1.49,304
+Route 7 Washington,Telegraph at Bella Vista,487,684,1.53,2.15,318
+Route 4 Sunset,124 North Valley View Drive,473,351,1.5,1.11,315
+Route 2 Riverside,Jubilee House,470,249,1.9,1.0,248
+Route 7 Washington,Bluff View/Sunrise,449,463,1.53,1.57,294
+Route 2 Riverside,580 East 700 South,441,418,1.54,1.46,287
+Route 7 Washington,144 Cactus Lane/Buena Vista Boulevard,426,442,1.36,1.41,313
+Route 7 Washington,335 North Main,418,211,1.57,0.79,267
+Route 2 Riverside,320 South 700 East,408,752,1.33,2.46,306
+Route 4 Sunset,1925 West 1465 North,391,550,1.37,1.92,286
+Route 7 Washington,1100 East & Pine Valley Street,368,347,1.34,1.27,274
+Route 6 Dixie Dr South,365 North Valley View,365,1231,1.1,3.7,333
+Route 6 Dixie Dr South,Green Valley Condos,364,759,1.18,2.46,308
+Route 2 Riverside,Salt Lake Express/ South Main Street,355,598,1.22,2.05,291
+Route 6 Dixie Dr South,Tonaquint Park,354,85,1.79,0.43,198
+Route 6 Dixie Dr South,Valley View @ Stonebridge,350,1117,1.06,3.38,330
+Route 4 Sunset,Dixie Dr @ Sunbrook Drive,345,281,1.21,0.99,285
+Route 5 Ivins,1075 South 200 East,322,396,1.41,1.73,229
+Route 5 Ivins,Red Mountain Elementary,319,241,1.62,1.22,197
+Route 6 Dixie Dr South,Tonaquint Business Park,264,860,0.85,2.76,312
+Route 5 Ivins,85 East 100 North,255,349,1.21,1.65,211
+Route 8 Zion,1130 Zion Park Boulevard (Hampton) Springdale,225,2061,0.7,6.4,322
+Route 4 Sunset,1957 North 2100 West,210,285,1.2,1.63,175
+Route 6 Dixie Dr South,Dixie Drive and Mesa Palms Drive,195,341,0.75,1.31,260
+Route 5 Ivins,272 East Center Street,184,104,1.26,0.71,146
+Route 5 Ivins,Park 410 East Center Street,171,98,1.19,0.68,144
+Route 5 Ivins,305 South 200 East,164,157,1.15,1.1,143
+Route 7 Washington,Buena Vista/Calle Del Sol,163,141,0.99,0.86,164
+Route 6 Dixie Dr South,1730 West 100 North,138,68,0.93,0.46,149
+Route 7 Washington,700 East/Springhill Drive,123,134,1.02,1.11,121
+Route 6 Dixie Dr South,505 South Valley View,110,592,0.4,2.17,273
+Route 1 Red Cliffs (B),40 North Mall Drive,93,63,1.19,0.81,78
+Route 5 Ivins,955 South 200 East,89,199,0.63,1.41,141
+Route 4 Sunset,1720 North Lava Flow Drive,85,196,0.73,1.68,117
+Route 5 Ivins,705 South 200 East,70,132,0.48,0.91,145
+Route 6 Dixie Dr South,1367 West 100 North,43,114,0.41,1.08,106
+Route 5 Ivins,930 East Center,33,53,0.57,0.91,58
+Route 1 Red Cliffs (B),110 South Mall Drive,21,90,0.37,1.58,57
+Route 6 Dixie Dr South,Cottonwood Cove Park,17,32,1.31,2.46,13
+Route 6 Dixie Dr South,Learning Center (Call) 2044 S Mesa Palms Drive,16,28,0.52,0.9,31

@@ -1,0 +1,11 @@
+route,total_in,total_out,unique_days,avg_daily_in,avg_daily_out
+Route 1 Red Cliffs (A),35961,37999,336,107.03,113.09
+Route 1 Red Cliffs (B),41252,33253,336,122.77,98.97
+Route 2 Riverside,80475,93623,336,239.51,278.64
+Route 3 West Side Connector (Inbound),38483,34997,336,114.53,104.16
+Route 3 West Side Connector (Outbound),41573,40995,336,123.73,122.01
+Route 4 Sunset,60359,67190,337,179.11,199.38
+Route 5 Ivins,22749,33327,336,67.71,99.19
+Route 6 Dixie Dr South,31957,27343,336,95.11,81.38
+Route 7 Washington,32159,43880,336,95.71,130.6
+Route 8 Zion,28709,30807,332,86.47,92.79

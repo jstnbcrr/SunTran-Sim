@@ -1,0 +1,175 @@
+/* LEAFLET SAFETY: never apply CSS `transform` to .app-shell, .app-header,
+   .app-main, or any ancestor of the Leaflet map container.
+   Leaflet uses getBoundingClientRect() to place tiles and markers.
+   A transform on any ancestor shifts that rect, making the basemap appear
+   offset from all markers and polylines. Use box-shadow / filter on children
+   (e.g. .logo-icon) only — never on the layout containers themselves. */
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.app-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 0 24px;
+  height: 72px;
+  background: linear-gradient(135deg, #001830 0%, #002444 60%, #001e38 100%);
+  border-bottom: 2px solid var(--accent);
+  flex-shrink: 0;
+  z-index: 1000;
+  box-shadow: 0 2px 20px rgba(0, 36, 68, 0.8);
+}
+
+.app-logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-right: 8px;
+}
+
+.logo-img  { height: 48px; width: auto; object-fit: contain; }
+.logo-sub  { font-size: 11px; color: #ffffff; white-space: nowrap; }
+
+.app-nav { display: flex; gap: 4px; flex: 1; }
+
+.nav-btn {
+  background: transparent;
+  color: var(--muted);
+  padding: 7px 18px;
+  border-radius: var(--radius);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  border: 1px solid transparent;
+  transition: color 0.15s, background 0.15s, border-color 0.15s;
+}
+.nav-btn.active {
+  color: var(--accent);
+  background: rgba(230, 201, 40, 0.12);
+  border-color: rgba(230, 201, 40, 0.4);
+}
+.nav-btn:hover { color: var(--text); background: rgba(255,255,255,0.05); }
+
+.header-actions { margin-left: auto; }
+
+.error-banner {
+  background: #7f1d1d;
+  color: #fca5a5;
+  padding: 10px 20px;
+  font-size: 13px;
+  border-bottom: 1px solid #ef4444;
+  flex-shrink: 0;
+}
+
+.app-main {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+}
+
+/* ── Shared panel styles ─────────────────────────────────── */
+.panel {
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  border-top: 3px solid #002444;
+  padding: 16px;
+  overflow-y: auto;
+  min-width: 280px;
+  max-width: 340px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.panel-title {
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  padding-bottom: 8px;
+  border-bottom: 1px solid #00427a;
+}
+
+.panel-section { display: flex; flex-direction: column; gap: 8px; }
+
+.route-badge {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  margin-right: 6px;
+  flex-shrink: 0;
+}
+
+.card {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px;
+}
+
+.card-title {
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.stat-box {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+}
+
+.stat-label { font-size: 11px; color: var(--muted); }
+.stat-value { font-size: 22px; font-weight: 700; color: var(--text); line-height: 1.2; }
+.stat-unit  { font-size: 11px; color: var(--muted); }
+
+.delta-positive { color: var(--success); }
+.delta-negative { color: var(--danger); }
+.delta-neutral  { color: var(--muted); }
+
+.form-row { display: flex; flex-direction: column; gap: 4px; }
+.form-actions { display: flex; gap: 8px; margin-top: 4px; }
+
+.route-list-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 13px;
+}
+.route-list-item .name { flex: 1; font-weight: 500; }
+.route-list-item .stop-count { color: var(--muted); font-size: 11px; }
+
+.scrollable { overflow-y: auto; max-height: 220px; }
+
+.divider {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 4px 0;
+}
+
+table { width: 100%; border-collapse: collapse; font-size: 12px; }
+th { text-align: left; color: var(--muted); padding: 6px 8px; border-bottom: 1px solid var(--border); font-weight: 600; }
+td { padding: 6px 8px; border-bottom: 1px solid var(--border); }
+tr:last-child td { border-bottom: none; }
+
+.comparison-table th,
+.comparison-table td { text-align: center; }
+.comparison-table th:first-child,
+.comparison-table td:first-child { text-align: left; }
