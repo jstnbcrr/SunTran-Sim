@@ -31,8 +31,8 @@ function makeHubIcon(size = 28) {
 }
 const HUB_ICON = makeHubIcon(28);
 
-const ST_GEORGE_CENTER = [37.155, -113.38];
-const ST_GEORGE_ZOOM   = 10;
+const ST_GEORGE_CENTER = [37.108, -113.583];
+const ST_GEORGE_ZOOM   = 13;
 const WALKING_RADIUS_M = 402.34; // 0.25 miles in meters
 
 // ─── Coordinate validation ─────────────────────────────────────────────────────
