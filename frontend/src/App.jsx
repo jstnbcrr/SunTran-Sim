@@ -3,6 +3,7 @@ import MapView from "./components/MapView";
 import SimulationControls from "./components/SimulationControls";
 import MetricsPanel from "./components/MetricsPanel";
 import Login from "./components/Login";
+import WelcomeModal from "./components/WelcomeModal";
 import {
   getStops,
   getRoutes,
@@ -190,6 +191,7 @@ export default function App() {
 
   return (
     <div className="app-shell">
+      <WelcomeModal />
       <header className="app-header">
         <div className="app-logo">
           <img src={suntranLogo} alt="SunTran" className="logo-img" />
