@@ -104,13 +104,9 @@ def _load_otp():
 
 @app.on_event("startup")
 def _bootstrap_admin():
-    """Create admin user from env vars if users.json is missing or empty."""
+    """Create admin users from env vars (ADMIN_USER/ADMIN_PASSWORD, ADMIN_USER2/ADMIN_PASSWORD2, etc.)"""
     import json, bcrypt
     users_file = os.path.join(os.path.dirname(__file__), "users.json")
-    username = os.environ.get("ADMIN_USER")
-    password = os.environ.get("ADMIN_PASSWORD")
-    if not username or not password:
-        return
     users = {}
     if os.path.exists(users_file):
         try:
@@ -118,11 +114,17 @@ def _bootstrap_admin():
                 users = json.load(f)
         except Exception:
             pass
-    if username not in users:
-        users[username] = bcrypt.hashpw(password.encode(), bcrypt.gensalt(12)).decode()
+    changed = False
+    for suffix in ["", "2", "3", "4", "5"]:
+        username = os.environ.get(f"ADMIN_USER{suffix}")
+        password = os.environ.get(f"ADMIN_PASSWORD{suffix}")
+        if username and password and username not in users:
+            users[username] = bcrypt.hashpw(password.encode(), bcrypt.gensalt(12)).decode()
+            print(f"Created admin user '{username}'")
+            changed = True
+    if changed:
         with open(users_file, "w") as f:
             json.dump(users, f, indent=2)
-        print(f"Created admin user '{username}'")
 
 
 @app.on_event("startup")
