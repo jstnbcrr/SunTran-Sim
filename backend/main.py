@@ -529,6 +529,17 @@ def get_coverage_gaps():
     return {"gap_count": len(gaps), "gaps": gaps}
 
 
+@protected.get("/api/route-shapes")
+def get_route_shapes():
+    """Return GTFS shape coordinates for each route."""
+    import json
+    shapes_path = os.path.join(DATA_DIR, "route_shapes.json")
+    if not os.path.exists(shapes_path):
+        return {}
+    with open(shapes_path) as f:
+        return json.load(f)
+
+
 # ── Register protected router ──────────────────────────────────────────────────
 app.include_router(protected)
 

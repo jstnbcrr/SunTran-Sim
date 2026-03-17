@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import L from "leaflet";
 import {
   MapContainer,
@@ -12,6 +12,7 @@ import {
   useMap,
 } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
+import { getRouteShapes } from "../api/client";
 
 // ── Employment hub star icon ───────────────────────────────────────────────────
 function makeHubIcon(size = 28) {
@@ -289,22 +290,14 @@ export default function MapView({
     setInvalidateTrigger(v => v + 1);
   };
 
-  // ── Road-route fetching ───────────────────────────────────────────────────────
+  // ── GTFS shape loading (replaces Mapbox road routing) ─────────────────────────
 
   useEffect(() => {
-    if (!routeLines.length) return;
-    let cancelled = false;
-    routeLines.forEach(async (route) => {
-      if (route.coords.length < 2) return;
-      const coords = await buildRoadRoute(route.coords);
-      if (cancelled) return;
-      setRoadCoords(prev => ({ ...prev, [route.route_id]: coords }));
-      // Duration data is now in segmentDurationCache — compute stats
-      const stats = getRouteTravelStats(route.coords);
-      if (stats) setRouteStats(prev => ({ ...prev, [route.route_id]: stats }));
-    });
-    return () => { cancelled = true; };
-  }, [routes, stops]); // eslint-disable-line react-hooks/exhaustive-deps
+    getRouteShapes().then(shapes => {
+      if (!shapes) return;
+      setRoadCoords(shapes);
+    }).catch(() => {});
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Coordinate-based key: re-run whenever actual lat/lng values change, not just stop IDs.
   // This catches custom stops whose coords enter allStopsForSim after the stop ID was selected.

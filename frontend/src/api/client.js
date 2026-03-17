@@ -55,6 +55,7 @@ export const getBoardingsByRouteDow   = () => api.get("/boardings/by-route-dow")
 export const getBoardingsByRouteMonth = () => api.get("/boardings/by-route-month").then(r => r.data);
 export const getBoardingsByRouteStop  = () => api.get("/boardings/by-route-stop").then(r => r.data);
 export const getCoverageGaps   = ()       => api.get("/simulate/coverage-gaps").then(r => r.data);
+export const getRouteShapes    = ()       => api.get("/route-shapes").then(r => r.data);
 
 export const addRoute    = (route)       => api.post("/routes", route).then(r => r.data);
 export const updateRoute = (id, route)   => api.put(`/routes/${id}`, route).then(r => r.data);
