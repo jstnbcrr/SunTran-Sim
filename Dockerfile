@@ -3,7 +3,7 @@ FROM node:22-alpine AS frontend
 
 WORKDIR /frontend
 COPY frontend/package.json frontend/package-lock.json ./
-RUN npm ci
+RUN npm install
 COPY frontend/ .
 
 # Mapbox token is injected at build time
