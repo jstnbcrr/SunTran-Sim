@@ -19,8 +19,8 @@ frontend/.vite/
 # Data backups (large, auto-generated)
 data/backups/
 
-# User credentials store
-backend/users.json
+# User credentials store — intentionally included (bcrypt hashes only, no plain text passwords)
+# backend/users.json
 
 # Geocode cache (auto-generated, contains API call results)
 data/geocode_cache.json
