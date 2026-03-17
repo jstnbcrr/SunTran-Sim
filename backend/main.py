@@ -103,8 +103,8 @@ def _load_otp():
 
 
 @app.on_event("startup")
-def _bootstrap_admin():
-    """Create admin users from env vars (ADMIN_USER/ADMIN_PASSWORD, ADMIN_USER2/ADMIN_PASSWORD2, etc.)"""
+def _startup():
+    """Bootstrap admin users then load data."""
     import json, bcrypt
     users_file = os.path.join(os.path.dirname(__file__), "users.json")
     users = {}
@@ -122,12 +122,12 @@ def _bootstrap_admin():
             users[username] = bcrypt.hashpw(password.encode(), bcrypt.gensalt(12)).decode()
             print(f"Created admin user '{username}'")
             changed = True
-    if changed:
+    if changed or not os.path.exists(users_file):
         with open(users_file, "w") as f:
             json.dump(users, f, indent=2)
+    _load_data()
 
 
-@app.on_event("startup")
 def _load_data():
     global _stops, _routes, _ridership, _employment_hubs
     try:

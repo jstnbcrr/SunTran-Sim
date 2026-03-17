@@ -27,6 +27,8 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 # ---------------------------------------------------------------------------
 
 def _load_users() -> dict[str, str]:
+    if not os.path.exists(USERS_FILE):
+        return {}
     with open(USERS_FILE) as f:
         return json.load(f)
 
