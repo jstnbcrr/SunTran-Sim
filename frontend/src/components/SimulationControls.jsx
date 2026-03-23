@@ -1166,12 +1166,75 @@ function DemandForecast({ stops, hubs, byRouteStop }) {
   }, [lat, lng, radius, stops, hubs, byRouteStop]);
 
   const confColor = forecast?.confidence === "High" ? "var(--success)" : forecast?.confidence === "Medium" ? "var(--warning)" : "var(--danger)";
+  const [showMethodology, setShowMethodology] = useState(false);
 
   return (
     <div style={{ flex:1, overflowY:"auto", padding:24 }}>
       <div style={{ fontSize:16, fontWeight:700, color:"var(--muted)", textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:16 }}>
         Demand Forecast — Hypothetical Stop
       </div>
+
+      {/* ── Methodology explainer ── */}
+      <div style={{ background:"var(--surface2)", border:"1px solid var(--border)", borderRadius:"var(--radius)", marginBottom:16, overflow:"hidden" }}>
+        <button
+          onClick={() => setShowMethodology(v => !v)}
+          style={{ width:"100%", display:"flex", alignItems:"center", justifyContent:"space-between", padding:"10px 14px", background:"transparent", border:"none", cursor:"pointer", color:"var(--muted)", fontSize:12, fontWeight:600 }}
+        >
+          <span>ℹ How does this estimate work?</span>
+          <span style={{ fontSize:10 }}>{showMethodology ? "▲ Hide" : "▼ Show"}</span>
+        </button>
+        {showMethodology && (
+          <div style={{ padding:"0 14px 14px", fontSize:12, color:"var(--text)", lineHeight:1.7, borderTop:"1px solid var(--border)" }}>
+            <p style={{ marginTop:12, marginBottom:8, fontWeight:600, color:"var(--accent)" }}>Overview</p>
+            <p style={{ margin:"0 0 10px" }}>
+              This tool estimates how many riders per day a <em>new</em> bus stop at your chosen location might attract,
+              based on two factors: how busy nearby existing stops are, and how close major employment hubs are.
+            </p>
+
+            <p style={{ margin:"0 0 6px", fontWeight:600, color:"var(--accent)" }}>Step 1 — Find nearby stops</p>
+            <p style={{ margin:"0 0 10px" }}>
+              The model scans all existing stops that have ridership data and keeps only those within your
+              chosen <strong>search radius</strong>. If no stops fall within that radius, widen it and try again.
+            </p>
+
+            <p style={{ margin:"0 0 6px", fontWeight:600, color:"var(--accent)" }}>Step 2 — Distance-weighted ridership</p>
+            <p style={{ margin:"0 0 10px" }}>
+              Each nearby stop's average daily boardings are weighted by how close it is — stops right next
+              to your location count more than stops near the edge of the radius. This produces a baseline
+              ridership estimate for the area.
+            </p>
+
+            <p style={{ margin:"0 0 6px", fontWeight:600, color:"var(--accent)" }}>Step 3 — Employment hub multiplier</p>
+            <p style={{ margin:"0 0 10px" }}>
+              Employment hubs within 3 miles boost the estimate. The more workers nearby (and the closer
+              they are), the higher the multiplier — up to a maximum of <strong>2.5×</strong>. This reflects
+              that stops near large employers tend to attract more commuter riders.
+            </p>
+
+            <p style={{ margin:"0 0 6px", fontWeight:600, color:"var(--accent)" }}>Step 4 — Low / Mid / High range</p>
+            <p style={{ margin:"0 0 10px" }}>
+              The mid estimate is the model's best guess. Low is 60% of that (pessimistic scenario) and
+              High is 150% (optimistic scenario), reflecting real-world uncertainty.
+            </p>
+
+            <p style={{ margin:"0 0 6px", fontWeight:600, color:"var(--accent)" }}>Confidence level</p>
+            <p style={{ margin:"0 0 10px" }}>
+              <strong style={{ color:"var(--success)" }}>High</strong> — 3 or more nearby stops found (strong local data). &nbsp;
+              <strong style={{ color:"var(--warning)" }}>Medium</strong> — 2 nearby stops. &nbsp;
+              <strong style={{ color:"var(--danger)" }}>Low</strong> — only 1 nearby stop (treat estimates as rough guidance only).
+            </p>
+
+            <p style={{ margin:"0 0 6px", fontWeight:600, color:"var(--accent)" }}>Important limitations</p>
+            <ul style={{ margin:"0 0 4px", paddingLeft:18 }}>
+              <li>Only stops with existing ridership records can inform the model — gaps in the data reduce accuracy.</li>
+              <li>The model assumes the new stop would serve a similar population to nearby existing stops.</li>
+              <li>It does not account for time of day, land-use zoning, or planned future development.</li>
+              <li>The employment hub multiplier is a general heuristic, not calibrated to St. George specifically.</li>
+            </ul>
+          </div>
+        )}
+      </div>
+
       <div style={DF_CARD}>
         <div style={{fontSize:12,color:"var(--muted)",marginBottom:12,lineHeight:1.5}}>
           Estimates projected daily boardings for a new stop based on distance-weighted ridership from nearby existing stops and employment hub proximity.
