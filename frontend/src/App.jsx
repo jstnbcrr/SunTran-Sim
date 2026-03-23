@@ -253,6 +253,8 @@ export default function App() {
           <SimulationControls
             stops={stops}
             routes={routes}
+            hubs={hubs}
+            byRouteStop={boardingsRouteStop}
             onAdd={handleAddRoute}
             onUpdate={handleUpdateRoute}
             onDelete={handleDeleteRoute}
@@ -283,8 +285,6 @@ export default function App() {
             byRouteDow={boardingsRouteDow}
             byRouteMonth={boardingsRouteMonth}
             byRouteStop={boardingsRouteStop}
-            stops={stops}
-            hubs={hubs}
           />
         )}
         {activeTab === "Instructions" && <InstructionsPanel />}

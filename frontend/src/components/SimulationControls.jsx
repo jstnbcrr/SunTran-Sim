@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { MapContainer, TileLayer, CircleMarker, Polyline, useMap, useMapEvents } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import { runSimulation, listBackups, restoreBackup, deleteBackup, downloadBackup, downloadCurrentCsv } from "../api/client";
@@ -1070,9 +1070,161 @@ function ScenarioPanel({ stops, routes, onSimulationComplete, onSimulateRoute, o
   );
 }
 
+// ── Demand Forecast ───────────────────────────────────────────────────────────
+const DF_CARD  = { background:"var(--surface2)", border:"1px solid var(--border)", borderRadius:"var(--radius)", padding:16, marginBottom:16 };
+const DF_TITLE = { fontSize:13, fontWeight:700, color:"var(--muted)", textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:12 };
+const DF_ROUTE_COLORS = {
+  "Route 1 Red Cliffs":"#f20c0c","Route 2 Riverside":"#3498db","Route 3 West Side Connector (Inbound)":"#2ecc71",
+  "Route 4 Sunset":"#f39c12","Route 5 Ivins":"#9b59b6","Route 6 Dixie Dr South":"#1abc9c",
+  "Route 7 Washington":"#e67e22","Route 8 Zion":"#e91e63",
+};
+const DF_SHORT = (r) => r.replace("Route ","R").replace(/\s.*/,"").trim();
+
+function dfHaversine(lat1, lng1, lat2, lng2) {
+  const R = 3958.8, toRad = d => d * Math.PI / 180;
+  const dLat = toRad(lat2-lat1), dLng = toRad(lng2-lng1);
+  const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLng/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+const DF_SCENARIOS = [
+  { label:"S. Bloomington – New Costco", lat:37.0721, lng:-113.5891, note:"Southern Bloomington development corridor. Major retail/employment growth area." },
+  { label:"Custom location", lat:"", lng:"", note:"" },
+];
+
+function DemandForecast({ stops, hubs, byRouteStop }) {
+  const [scenarioIdx, setScenarioIdx] = useState(0);
+  const [lat, setLat] = useState(DF_SCENARIOS[0].lat);
+  const [lng, setLng] = useState(DF_SCENARIOS[0].lng);
+  const [radius, setRadius] = useState(1.0);
+
+  const selectScenario = (idx) => {
+    setScenarioIdx(idx);
+    setLat(DF_SCENARIOS[idx].lat);
+    setLng(DF_SCENARIOS[idx].lng);
+  };
+
+  const forecast = useMemo(() => {
+    const la = parseFloat(lat), lo = parseFloat(lng);
+    if (isNaN(la) || isNaN(lo)) return null;
+    const stopLookup = {};
+    stops.forEach(s => {
+      const key = (s.address || s.stop_name || "").trim().toLowerCase();
+      stopLookup[key] = { lat: parseFloat(s.latitude), lng: parseFloat(s.longitude), stop_id: s.stop_id, name: s.stop_name };
+    });
+    const nearbyStopData = [];
+    byRouteStop.forEach(row => {
+      const key = (row.address || "").trim().toLowerCase();
+      const stopInfo = stopLookup[key];
+      if (!stopInfo) return;
+      const dist = dfHaversine(la, lo, stopInfo.lat, stopInfo.lng);
+      if (dist <= radius) nearbyStopData.push({ name: row.address, route: row.route, avg_daily_in: parseFloat(row.avg_daily_in) || 0, dist });
+    });
+    const nearbyHubs = hubs.map(h => ({ name: h.hub_name, workers: h.estimated_workers, dist: dfHaversine(la, lo, parseFloat(h.latitude), parseFloat(h.longitude)) })).filter(h => h.dist <= 3).sort((a,b) => a.dist-b.dist);
+    if (nearbyStopData.length === 0) return { nearbyStops: [], nearbyHubs, low: 0, mid: 0, high: 0, confidence: "Low" };
+    const totalWeight = nearbyStopData.reduce((s, d) => s + (1/(d.dist+0.1)), 0);
+    const weightedAvg = nearbyStopData.reduce((s, d) => s + d.avg_daily_in*(1/(d.dist+0.1)), 0) / totalWeight;
+    const hubWorkers = nearbyHubs.reduce((s, h) => s + h.workers/Math.max(h.dist,0.25), 0);
+    const hubMultiplier = Math.min(1 + hubWorkers/5000, 2.5);
+    const base = weightedAvg * hubMultiplier;
+    const confidence = nearbyStopData.length >= 3 ? "High" : nearbyStopData.length === 2 ? "Medium" : "Low";
+    return { nearbyStops: nearbyStopData.sort((a,b) => a.dist-b.dist).slice(0,5), nearbyHubs, low: Math.round(base*0.6), mid: Math.round(base), high: Math.round(base*1.5), confidence, weightedAvg: Math.round(weightedAvg) };
+  }, [lat, lng, radius, stops, hubs, byRouteStop]);
+
+  const confColor = forecast?.confidence === "High" ? "var(--success)" : forecast?.confidence === "Medium" ? "var(--warning)" : "var(--danger)";
+
+  return (
+    <div style={{ flex:1, overflowY:"auto", padding:24 }}>
+      <div style={{ fontSize:16, fontWeight:700, color:"var(--muted)", textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:16 }}>
+        Demand Forecast — Hypothetical Stop
+      </div>
+      <div style={DF_CARD}>
+        <div style={{fontSize:12,color:"var(--muted)",marginBottom:12,lineHeight:1.5}}>
+          Estimates projected daily boardings for a new stop based on distance-weighted ridership from nearby existing stops and employment hub proximity.
+        </div>
+        <div style={{marginBottom:12}}>
+          <label style={{display:"block",fontSize:12,color:"var(--muted)",marginBottom:6}}>Scenario</label>
+          <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+            {DF_SCENARIOS.map((s,i) => (
+              <button key={i} onClick={() => selectScenario(i)} style={{
+                padding:"5px 12px", fontSize:12, fontWeight:600, borderRadius:6, cursor:"pointer",
+                border:`1px solid ${scenarioIdx===i ? "var(--accent)" : "var(--border)"}`,
+                background: scenarioIdx===i ? "rgba(230,201,40,0.15)" : "transparent",
+                color: scenarioIdx===i ? "var(--accent)" : "var(--muted)",
+              }}>{s.label}</button>
+            ))}
+          </div>
+          {DF_SCENARIOS[scenarioIdx]?.note && (
+            <div style={{fontSize:11,color:"var(--muted)",marginTop:6,fontStyle:"italic"}}>{DF_SCENARIOS[scenarioIdx].note}</div>
+          )}
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:12}}>
+          <div className="form-row"><label>Latitude</label><input value={lat} onChange={e=>setLat(e.target.value)} placeholder="37.07" /></div>
+          <div className="form-row"><label>Longitude</label><input value={lng} onChange={e=>setLng(e.target.value)} placeholder="-113.59" /></div>
+          <div className="form-row"><label>Search radius (mi)</label><input type="number" value={radius} min={0.25} max={5} step={0.25} onChange={e=>setRadius(parseFloat(e.target.value))} /></div>
+        </div>
+        {forecast && (
+          <>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:14}}>
+              {[{label:"Low Estimate",value:forecast.low,color:"var(--muted)"},{label:"Mid Estimate",value:forecast.mid,color:"var(--accent)"},{label:"High Estimate",value:forecast.high,color:"var(--success)"}].map((e,i) => (
+                <div key={i} style={{background:"var(--surface)",border:"1px solid var(--border)",borderRadius:"var(--radius)",padding:"10px 12px",textAlign:"center"}}>
+                  <div style={{fontSize:11,color:"var(--muted)",marginBottom:4}}>{e.label}</div>
+                  <div style={{fontSize:22,fontWeight:700,color:e.color}}>{e.value > 0 ? e.value : "—"}</div>
+                  <div style={{fontSize:10,color:"var(--muted)"}}>avg boardings/day</div>
+                </div>
+              ))}
+            </div>
+            <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14}}>
+              <span style={{fontSize:12,color:"var(--muted)"}}>Model confidence:</span>
+              <span style={{fontSize:12,fontWeight:700,color:confColor}}>{forecast.confidence}</span>
+              <span style={{fontSize:11,color:"var(--muted)"}}>({forecast.nearbyStops.length} nearby stop{forecast.nearbyStops.length!==1?"s":""} within {radius} mi)</span>
+            </div>
+            {forecast.nearbyStops.length > 0 && (
+              <div style={{marginBottom:12}}>
+                <div style={{fontSize:12,fontWeight:600,marginBottom:6}}>Nearby stops used in model</div>
+                <table style={{width:"100%",borderCollapse:"collapse",fontSize:11}}>
+                  <thead><tr>
+                    {["Stop","Route","Dist (mi)","Avg/Day"].map((h,i) => <th key={i} style={{textAlign:i>=2?"right":"left",color:"var(--muted)",padding:"4px 6px",borderBottom:"1px solid var(--border)"}}>{h}</th>)}
+                  </tr></thead>
+                  <tbody>
+                    {forecast.nearbyStops.map((s,i) => (
+                      <tr key={i} style={{borderBottom:"1px solid var(--border)"}}>
+                        <td style={{padding:"4px 6px"}}>{s.name}</td>
+                        <td style={{padding:"4px 6px"}}><span style={{color:DF_ROUTE_COLORS[s.route]||"var(--muted)",fontWeight:600}}>{DF_SHORT(s.route)}</span></td>
+                        <td style={{padding:"4px 6px",textAlign:"right",fontFamily:"monospace"}}>{s.dist.toFixed(2)}</td>
+                        <td style={{padding:"4px 6px",textAlign:"right",color:"var(--accent)",fontWeight:600}}>{s.avg_daily_in}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            {forecast.nearbyHubs.length > 0 && (
+              <div>
+                <div style={{fontSize:12,fontWeight:600,marginBottom:6}}>Nearby employment hubs (within 3 mi)</div>
+                <div style={{display:"flex",flexDirection:"column",gap:4}}>
+                  {forecast.nearbyHubs.slice(0,4).map((h,i) => (
+                    <div key={i} style={{display:"flex",justifyContent:"space-between",fontSize:11,padding:"4px 8px",background:"var(--surface)",borderRadius:4}}>
+                      <span>{h.name}</span>
+                      <span style={{color:"var(--muted)"}}>{h.workers.toLocaleString()} workers · {h.dist.toFixed(2)} mi</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {forecast.nearbyStops.length === 0 && (
+              <div style={{color:"var(--muted)",fontSize:12,fontStyle:"italic"}}>No stops with ridership data found within {radius} mi. Try increasing the search radius.</div>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Main export ───────────────────────────────────────────────────────────────
-export default function SimulationControls({ stops, routes, onAdd, onUpdate, onDelete, onUpload, onSimulationComplete, onSimulateRoute, onResetSimulation }) {
-  const [view, setView] = useState("scenario"); // scenario | network
+export default function SimulationControls({ stops, routes, hubs, byRouteStop, onAdd, onUpdate, onDelete, onUpload, onSimulationComplete, onSimulateRoute, onResetSimulation }) {
+  const [view, setView] = useState("scenario"); // scenario | network | forecast
 
   return (
     <div style={{ display: "flex", flexDirection: "column", flex: 1, overflow: "hidden" }}>
@@ -1082,6 +1234,7 @@ export default function SimulationControls({ stops, routes, onAdd, onUpdate, onD
         {[
           { id: "scenario", label: "Scenario Planning" },
           { id: "network",  label: "Manage Network"    },
+          { id: "forecast", label: "Demand Forecast"   },
         ].map(t => (
           <button key={t.id} onClick={() => setView(t.id)} style={{
             padding: "6px 18px", fontSize: 13, fontWeight: 700, borderRadius: "6px 6px 0 0",
@@ -1105,6 +1258,9 @@ export default function SimulationControls({ stops, routes, onAdd, onUpdate, onD
             onSimulateRoute={onSimulateRoute}
             onResetSimulation={onResetSimulation}
           />
+        )}
+        {view === "forecast" && (
+          <DemandForecast stops={stops} hubs={hubs} byRouteStop={byRouteStop} />
         )}
         {view === "network" && (
           <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
