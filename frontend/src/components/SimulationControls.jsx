@@ -1092,11 +1092,45 @@ const DF_SCENARIOS = [
   { label:"Custom location", lat:"", lng:"", note:"" },
 ];
 
+// ── Forecast map picker (no name field — just lat/lng) ─────────────────────────
+function ForecastMapPicker({ onConfirm, onCancel }) {
+  const [picked, setPicked] = useState(null);
+  return (
+    <div style={{ position:"fixed", inset:0, zIndex:9999, background:"rgba(0,0,0,0.65)", display:"flex", alignItems:"center", justifyContent:"center" }}>
+      <div style={{ background:"var(--surface2)", border:"1px solid var(--border)", borderRadius:10, padding:20, width:480, maxWidth:"95vw", display:"flex", flexDirection:"column", gap:12 }}>
+        <div style={{ fontWeight:700, fontSize:14 }}>Pick Forecast Location</div>
+        <div style={{ fontSize:12, color:"var(--muted)" }}>Click anywhere on the map to set the hypothetical stop location.</div>
+        <div style={{ height:300, borderRadius:6, overflow:"hidden", border:"1px solid var(--border)", cursor:"crosshair" }}>
+          <MapContainer center={[37.108, -113.583]} zoom={12} style={{ height:"100%", width:"100%" }} zoomControl>
+            <TileLayer attribution='&copy; OpenStreetMap' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+            <MapClickHandler onPick={(lat, lng) => setPicked({ lat, lng })} />
+            {picked && (
+              <CircleMarker center={[picked.lat, picked.lng]} radius={9} pathOptions={{ color:"#fff", fillColor:"#e6c928", fillOpacity:1, weight:2 }} />
+            )}
+          </MapContainer>
+        </div>
+        {picked && (
+          <div style={{ fontSize:11, color:"var(--accent)", fontFamily:"monospace" }}>
+            {picked.lat.toFixed(5)}, {picked.lng.toFixed(5)}
+          </div>
+        )}
+        <div style={{ display:"flex", gap:8, justifyContent:"flex-end" }}>
+          <button className="btn-ghost" onClick={onCancel}>Cancel</button>
+          <button className="btn-primary" onClick={() => onConfirm(picked.lat, picked.lng)} disabled={!picked}>
+            Use This Location
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function DemandForecast({ stops, hubs, byRouteStop }) {
   const [scenarioIdx, setScenarioIdx] = useState(0);
   const [lat, setLat] = useState(DF_SCENARIOS[0].lat);
   const [lng, setLng] = useState(DF_SCENARIOS[0].lng);
   const [radius, setRadius] = useState(1.0);
+  const [showPicker, setShowPicker] = useState(false);
 
   const selectScenario = (idx) => {
     setScenarioIdx(idx);
@@ -1159,10 +1193,35 @@ function DemandForecast({ stops, hubs, byRouteStop }) {
           )}
         </div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:12}}>
-          <div className="form-row"><label>Latitude</label><input value={lat} onChange={e=>setLat(e.target.value)} placeholder="37.07" /></div>
-          <div className="form-row"><label>Longitude</label><input value={lng} onChange={e=>setLng(e.target.value)} placeholder="-113.59" /></div>
-          <div className="form-row"><label>Search radius (mi)</label><input type="number" value={radius} min={0.25} max={5} step={0.25} onChange={e=>setRadius(parseFloat(e.target.value))} /></div>
+          <div className="form-row">
+            <label>Latitude</label>
+            <input value={lat} onChange={e=>setLat(e.target.value)} placeholder="37.07" />
+          </div>
+          <div className="form-row">
+            <label>Longitude</label>
+            <input value={lng} onChange={e=>setLng(e.target.value)} placeholder="-113.59" />
+          </div>
+          <div className="form-row">
+            <label>Search radius (mi)</label>
+            <input type="number" value={radius} min={0.25} max={5} step={0.25} onChange={e=>setRadius(parseFloat(e.target.value))} />
+          </div>
         </div>
+        {scenarioIdx === 1 && (
+          <button
+            type="button"
+            className="btn-ghost"
+            onClick={() => setShowPicker(true)}
+            style={{ fontSize:12, marginBottom:12, display:"flex", alignItems:"center", gap:6 }}
+          >
+            📍 Pick location on map
+          </button>
+        )}
+        {showPicker && (
+          <ForecastMapPicker
+            onConfirm={(la, lo) => { setLat(la); setLng(lo); setShowPicker(false); }}
+            onCancel={() => setShowPicker(false)}
+          />
+        )}
         {forecast && (
           <>
             <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:14}}>
