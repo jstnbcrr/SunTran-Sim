@@ -9,6 +9,7 @@ const SECTIONS = [
   { id: "upload",     label: "Uploading Data" },
   { id: "params",     label: "Simulation Parameters" },
   { id: "csvschema",  label: "CSV Schemas" },
+  { id: "faq",        label: "FAQ" },
 ];
 
 function Section({ id, title, children }) {
@@ -90,6 +91,40 @@ function Tag({ children, color }) {
     }}>
       {children}
     </span>
+  );
+}
+
+function FaqItem({ question, children }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div style={{
+      borderBottom: "1px solid var(--border)", paddingBottom: 12, marginBottom: 12,
+    }}>
+      <button
+        onClick={() => setOpen(o => !o)}
+        style={{
+          background: "none", border: "none", cursor: "pointer",
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          width: "100%", textAlign: "left", padding: "6px 0", gap: 12,
+        }}
+      >
+        <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text)", lineHeight: 1.5 }}>
+          {question}
+        </span>
+        <span style={{
+          flexShrink: 0, fontSize: 16, color: "var(--accent)",
+          transform: open ? "rotate(90deg)" : "none", transition: "transform 0.15s",
+        }}>▶</span>
+      </button>
+      {open && (
+        <div style={{
+          fontSize: 12, color: "var(--muted)", lineHeight: 1.8,
+          paddingTop: 8, paddingLeft: 4,
+        }}>
+          {children}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -424,6 +459,143 @@ export default function InstructionsPanel() {
               ["hourly_alightings","integer", "Number of passengers alighting at this stop in this hour."],
             ]} />
           </SubSection>
+        </Section>
+
+        {/* ── FAQ ── */}
+        <Section id="faq" title="FAQ — Understanding the Simulation Results">
+          <p style={{ fontSize: 13, color: "var(--muted)", lineHeight: 1.7, marginBottom: 20 }}>
+            When you run a simulation the Metrics tab shows a <strong>current</strong> value,
+            a <strong>proposed</strong> value, and a <strong>delta</strong> (the difference).
+            A green delta is an improvement; red is a regression. Click each question below to learn
+            exactly what is being measured.
+          </p>
+
+          <FaqItem question="What does Total Stops mean, and what does a +/− delta tell me?">
+            <p>This is simply the number of physical bus stops in the network graph. Each unique stop
+            ID counts as one node.</p>
+            <p style={{ marginTop: 6 }}>
+              <strong>+ delta</strong> — your proposed route introduces stops that didn't previously exist
+              (e.g. you added custom stops or a new route that passes through new locations).<br />
+              <strong>− delta</strong> — stops were removed because a route was deleted or shortened and
+              those stops are no longer served by any route.
+            </p>
+            <p style={{ marginTop: 6 }}>A stop count change alone is neither good nor bad — what matters
+            is whether those new stops improve hub accessibility and travel time.</p>
+          </FaqItem>
+
+          <FaqItem question="What is a Route Segment / Total Edges?">
+            <p>A <strong>route segment</strong> is the direct connection between two consecutive stops
+            on a route. For example, a route with 4 stops (A → B → C → D) has 3 segments.</p>
+            <p style={{ marginTop: 6 }}>Because the simulation models bus travel as <strong>bidirectional</strong>
+            (buses run both ways), each segment is stored as two directed edges in the network graph.
+            So 3 physical segments = 6 edges in the count.</p>
+            <p style={{ marginTop: 6 }}>
+              <strong>+ delta</strong> — more segments means more direct connections between stops.<br />
+              <strong>− delta</strong> — a route was shortened or removed, reducing the number of
+              connections in the network.
+            </p>
+            <p style={{ marginTop: 6 }}>A high edge count alone doesn't mean better service — a long
+            route in a low-demand area adds many edges but may not improve hub accessibility at all.</p>
+          </FaqItem>
+
+          <FaqItem question="What does Average Travel Time mean, and why is a negative delta good?">
+            <p>The simulation calculates the <strong>shortest travel time</strong> between every possible
+            pair of stops in the network using Dijkstra's algorithm. Average Travel Time is the mean of
+            all those shortest paths, in minutes.</p>
+            <p style={{ marginTop: 6 }}>Travel time between two stops is based on:</p>
+            <ul style={{ paddingLeft: 18, marginTop: 4 }}>
+              <li>Straight-line distance between stops (via haversine formula)</li>
+              <li>Divided by average bus speed (default 15 mph)</li>
+              <li>Plus 0.5 minutes dwell time at each stop</li>
+              <li>Plus 5 minutes if the rider must transfer to a different route</li>
+            </ul>
+            <p style={{ marginTop: 6 }}>
+              <strong>− delta (green)</strong> — the proposed network gets riders to destinations
+              faster on average. This is what you want.<br />
+              <strong>+ delta (red)</strong> — the change made the average trip longer. This could mean
+              a direct route was replaced by a less efficient one, or transfers were added.
+            </p>
+            <p style={{ marginTop: 6 }}>This is the most meaningful single metric for evaluating
+            rider experience.</p>
+          </FaqItem>
+
+          <FaqItem question="What does Accessible Hubs mean?">
+            <p>An employment hub (hospital, university, major employer) is considered
+            <strong> accessible</strong> if two conditions are met:</p>
+            <ol style={{ paddingLeft: 18, marginTop: 4 }}>
+              <li>There is at least one bus stop within <strong>0.25 miles walking distance</strong> of
+              the hub's entrance.</li>
+              <li>At least one other stop in the network can reach that hub stop within the
+              <strong> travel time limit</strong> (default 30 minutes).</li>
+            </ol>
+            <p style={{ marginTop: 6 }}>
+              <strong>+ delta</strong> — your proposed route opened up transit access to an employer
+              that was previously unreachable or too far.<br />
+              <strong>− delta</strong> — a route change removed the only bus path to a hub within
+              the time limit. This is a serious equity concern.
+            </p>
+          </FaqItem>
+
+          <FaqItem question="What does Reachable Workers mean?">
+            <p>This is the total number of workers across all <strong>accessible</strong> employment hubs.
+            Each hub in <code>employment_hubs.csv</code> has an <code>estimated_workers</code> field.
+            This metric sums those values for every hub that passes the accessibility test above.</p>
+            <p style={{ marginTop: 6 }}>
+              <strong>+ delta</strong> — more workers now have at least one bus stop they can use to
+              reach their workplace within 30 minutes. This is the headline equity metric.<br />
+              <strong>− delta</strong> — a route change cut off access to a major employer. Even a
+              small route tweak can cause a large negative number here if it affects a hub with
+              thousands of workers.
+            </p>
+            <p style={{ marginTop: 6 }}>Example: if Intermountain Health has 3,200 estimated workers
+            and your proposed route is the only one that can reach it within 30 minutes — removing
+            that route drops Reachable Workers by 3,200 instantly.</p>
+          </FaqItem>
+
+          <FaqItem question="What is a Transfer Penalty and how does it affect results?">
+            <p>When the shortest path between two stops requires switching from one route to another
+            at a shared stop, the simulation adds a <strong>transfer penalty</strong> (default 5 minutes)
+            to that trip's total travel time.</p>
+            <p style={{ marginTop: 6 }}>This represents the real-world wait time for the connecting bus.
+            It means a direct route — even if slightly longer in distance — will often score better than
+            a faster route that requires a transfer.</p>
+            <p style={{ marginTop: 6 }}>You can adjust this in <strong>Simulation Parameters</strong>.
+            Lowering it models a system with frequent, reliable connections. Raising it to 10–15 minutes
+            models infrequent service where missed connections are costly.</p>
+          </FaqItem>
+
+          <FaqItem question="Why might my proposed route show no improvement even though it added stops?">
+            <p>Several reasons this can happen:</p>
+            <ul style={{ paddingLeft: 18, marginTop: 4 }}>
+              <li>The new stops are not within 0.25 miles of any employment hub — so they don't
+              help hub accessibility.</li>
+              <li>The new stops are in an area already covered by another route — no new workers
+              become reachable.</li>
+              <li>The route added a transfer requirement for trips that were previously direct,
+              increasing average travel time.</li>
+              <li>The employment hub nearest to your new stops already had no bus stop within
+              walking range — the hub is simply too far off any route.</li>
+            </ul>
+            <p style={{ marginTop: 6 }}>Check the <strong>Employment Hub Access</strong> table in the
+            Metrics tab to see which specific hubs are and aren't accessible, and use the Map tab to
+            visually inspect walking-radius coverage around those hubs.</p>
+          </FaqItem>
+
+          <FaqItem question="What are the limitations of the simulation model?">
+            <ul style={{ paddingLeft: 18, marginTop: 4 }}>
+              <li><strong>No schedules or frequency</strong> — the model assumes a bus is always available.
+              It does not account for headway, time of day, or first/last trip.</li>
+              <li><strong>Speed is constant</strong> — all route segments use the same average speed.
+              There is no traffic modeling.</li>
+              <li><strong>Walking is crow-flies</strong> — the 0.25-mile walking radius uses straight-line
+              distance, not actual walkable paths.</li>
+              <li><strong>Employment hubs only</strong> — accessibility is measured only to hubs in
+              your <code>employment_hubs.csv</code>. Grocery stores, clinics, schools, etc. are not
+              counted unless added to that file.</li>
+              <li><strong>No demand modeling</strong> — adding a route doesn't predict how many people
+              will actually ride it. Use the Ridership tab's Demand Forecast for that estimate.</li>
+            </ul>
+          </FaqItem>
         </Section>
 
       </div>
