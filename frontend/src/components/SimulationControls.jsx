@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { MapContainer, TileLayer, CircleMarker, Polyline, useMap, useMapEvents } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
-import { runSimulation, listBackups, restoreBackup, deleteBackup, downloadBackup, downloadCurrentCsv } from "../api/client";
+import { runSimulation, listBackups, restoreBackup, deleteBackup, downloadBackup, downloadCurrentCsv, getBoardingsInfo, previewBoardingsUpload, uploadBoardings, uploadOtpExcel } from "../api/client";
 
 const COLORS = [
   "#e74c3c", "#3498db", "#2ecc71", "#f39c12", "#9b59b6",
@@ -520,6 +520,284 @@ function DataFileManager({ fileType, label, hint, onUpload }) {
   );
 }
 
+// ── Ridership / OTP data import ───────────────────────────────────────────────
+const BOARDINGS_FILE_CONFIGS = [
+  { key: "boardings_by_month",       label: "boardings_by_month.csv",       hint: "month, total_in, total_out, unique_days, avg_daily_in, avg_daily_out",   isExcel: false },
+  { key: "boardings_by_route_month", label: "boardings_by_route_month.csv", hint: "route, month, total_in, total_out, unique_days, avg_daily_in, avg_daily_out", isExcel: false },
+  { key: "boardings_by_route",       label: "boardings_by_route.csv",       hint: "route, total_in, total_out, unique_days, avg_daily_in, avg_daily_out",    isExcel: false },
+  { key: "boardings_by_route_stop",  label: "boardings_by_route_stop.csv",  hint: "route, address, total_in, total_out, avg_daily_in, avg_daily_out, days",  isExcel: false },
+  { key: "boardings_by_stop",        label: "boardings_by_stop.csv",        hint: "route, stop_id, address, total_in, total_out, avg_daily_in, avg_daily_out, days", isExcel: false },
+  { key: "boardings_by_dow",         label: "boardings_by_dow.csv",         hint: "day_num, day_name, avg_in, avg_out, total_in, total_out",                isExcel: false },
+  { key: "boardings_by_route_dow",   label: "boardings_by_route_dow.csv",   hint: "route, day_num, day_name, avg_in, avg_out, total_in, total_out",         isExcel: false },
+];
+
+function BoardingsFileRow({ fileKey, label, hint }) {
+  const [info, setInfo]           = useState(null);
+  const [status, setStatus]       = useState(null);  // null | "previewing" | "preview_ready" | "merging" | "done" | "error:..."
+  const [preview, setPreview]     = useState(null);
+  const [pendingFile, setPending] = useState(null);
+  const [mode, setMode]           = useState("merge");
+
+  useEffect(() => {
+    getBoardingsInfo(fileKey).then(setInfo).catch(() => setInfo({ exists: false, rows: 0 }));
+  }, [fileKey]);
+
+  const handleFile = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    e.target.value = "";
+    setPending(file);
+    setStatus("previewing");
+    try {
+      const prev = await previewBoardingsUpload(fileKey, file);
+      setPreview(prev);
+      setStatus("preview_ready");
+    } catch (err) {
+      setStatus(`error: ${err?.response?.data?.detail || err.message}`);
+    }
+  };
+
+  const confirmImport = async () => {
+    if (!pendingFile) return;
+    setStatus("merging");
+    try {
+      const result = await uploadBoardings(fileKey, pendingFile, mode);
+      setStatus("done");
+      setPreview(null);
+      setPending(null);
+      setInfo(i => ({ ...i, rows: result.total_rows }));
+      setTimeout(() => setStatus(null), 4000);
+    } catch (err) {
+      setStatus(`error: ${err?.response?.data?.detail || err.message}`);
+    }
+  };
+
+  const cancelPreview = () => { setPreview(null); setPending(null); setStatus(null); };
+
+  const isDone  = status === "done";
+  const isError = status?.startsWith("error:");
+  const isBusy  = status === "previewing" || status === "merging";
+
+  return (
+    <div style={{ borderBottom: "1px solid var(--border)", paddingBottom: 10, marginBottom: 2 }}>
+      <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 12, fontWeight: 600 }}>{label}</div>
+          <div style={{ fontSize: 10, color: "var(--muted)", marginTop: 1 }}>{hint}</div>
+          {info && (
+            <div style={{ fontSize: 10, color: "var(--muted)", marginTop: 2 }}>
+              {info.exists
+                ? <>
+                    <span style={{ color: "var(--text)" }}>{info.rows.toLocaleString()} rows</span>
+                    {info.date_range && <> · <span style={{ color: "var(--accent)" }}>{info.date_range.min} → {info.date_range.max}</span></>}
+                  </>
+                : <span style={{ color: "var(--danger)" }}>File not found</span>
+              }
+            </div>
+          )}
+        </div>
+
+        <div style={{ display: "flex", gap: 4, alignItems: "center", flexShrink: 0 }}>
+          <select
+            value={mode}
+            onChange={e => setMode(e.target.value)}
+            style={{ fontSize: 10, padding: "3px 4px", borderRadius: 4, border: "1px solid var(--border)",
+              background: "var(--surface2)", color: "var(--text)" }}
+            title="Import mode"
+          >
+            <option value="merge">Merge (keep history)</option>
+            <option value="replace">Replace (overwrite)</option>
+          </select>
+          <label style={{
+            background: "var(--surface2)",
+            border: `1px solid ${isDone ? "var(--success)" : isError ? "var(--danger)" : "var(--border)"}`,
+            borderRadius: "var(--radius)", padding: "3px 8px", fontSize: 11,
+            cursor: isBusy ? "default" : "pointer",
+            opacity: isBusy ? 0.6 : 1,
+          }}>
+            {isBusy ? (status === "previewing" ? "Reading…" : "Saving…") : isDone ? "✓ Done" : "↑ Upload"}
+            <input type="file" accept=".csv" style={{ display: "none" }} onChange={handleFile} disabled={isBusy} />
+          </label>
+        </div>
+      </div>
+
+      {isError && (
+        <div style={{ marginTop: 6, fontSize: 11, color: "var(--danger)",
+          background: "rgba(231,76,60,0.08)", borderRadius: 4, padding: "4px 8px" }}>
+          {status.replace("error: ", "")}
+        </div>
+      )}
+
+      {/* Preview panel */}
+      {status === "preview_ready" && preview && (
+        <div style={{ marginTop: 8, background: "var(--bg)", border: "1px solid var(--border)",
+          borderRadius: "var(--radius)", padding: "10px 12px", fontSize: 11 }}>
+          <div style={{ fontWeight: 600, marginBottom: 6 }}>Import Preview</div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "4px 16px", marginBottom: 8 }}>
+            <div style={{ color: "var(--muted)" }}>Existing rows:</div>
+            <div>{preview.existing_rows.toLocaleString()}</div>
+            <div style={{ color: "var(--muted)" }}>Incoming rows:</div>
+            <div>{preview.incoming_rows.toLocaleString()}</div>
+            <div style={{ color: "var(--muted)" }}>New rows to add:</div>
+            <div style={{ color: "var(--success)", fontWeight: 600 }}>+{preview.rows_to_add.toLocaleString()}</div>
+            <div style={{ color: "var(--muted)" }}>Rows to update:</div>
+            <div style={{ color: "var(--accent)", fontWeight: 600 }}>{preview.rows_to_update.toLocaleString()} updated</div>
+            {preview.new_date_range && (
+              <>
+                <div style={{ color: "var(--muted)" }}>New data range:</div>
+                <div style={{ color: "var(--accent)" }}>{preview.new_date_range.min} → {preview.new_date_range.max}</div>
+              </>
+            )}
+          </div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button className="btn-primary" style={{ fontSize: 11, padding: "5px 14px" }} onClick={confirmImport}>
+              Confirm Import
+            </button>
+            <button className="btn-ghost" style={{ fontSize: 11, padding: "5px 14px" }} onClick={cancelPreview}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+function OtpExcelRow() {
+  const [info, setInfo]           = useState(null);
+  const [status, setStatus]       = useState(null);
+  const [preview, setPreview]     = useState(null);
+  const [pendingFile, setPending] = useState(null);
+  const [mode, setMode]           = useState("replace");
+
+  useEffect(() => {
+    getBoardingsInfo("otp").then(setInfo).catch(() => setInfo({ exists: false, rows: 0 }));
+  }, []);
+
+  const handleFile = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    e.target.value = "";
+    setPending(file);
+    setStatus("loading");
+    // Parse Excel on backend — no preview endpoint for Excel yet, just show file name
+    setPreview({ filename: file.name });
+    setStatus("preview_ready");
+  };
+
+  const confirmImport = async () => {
+    if (!pendingFile) return;
+    setStatus("uploading");
+    try {
+      const result = await uploadOtpExcel(pendingFile, mode);
+      setStatus("done");
+      setPreview(null);
+      setPending(null);
+      setInfo(i => ({ ...i, rows: result.total_rows, exists: true }));
+      setTimeout(() => setStatus(null), 4000);
+    } catch (err) {
+      setStatus(`error: ${err?.response?.data?.detail || err.message}`);
+    }
+  };
+
+  const cancelPreview = () => { setPreview(null); setPending(null); setStatus(null); };
+
+  const isDone  = status === "done";
+  const isError = status?.startsWith("error:");
+  const isBusy  = status === "uploading";
+
+  return (
+    <div style={{ borderBottom: "1px solid var(--border)", paddingBottom: 10, marginBottom: 2 }}>
+      <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 12, fontWeight: 600 }}>
+            otp.csv <span style={{ fontSize: 10, fontWeight: 400, color: "var(--accent)", marginLeft: 4 }}>Excel import</span>
+          </div>
+          <div style={{ fontSize: 10, color: "var(--muted)", marginTop: 1 }}>
+            Route_OTP_By_Route_as_tables.xlsx — reads COMBINED sheet automatically
+          </div>
+          {info && (
+            <div style={{ fontSize: 10, color: "var(--muted)", marginTop: 2 }}>
+              {info.exists
+                ? <><span style={{ color: "var(--text)" }}>{info.rows.toLocaleString()} stop-level OTP records</span></>
+                : <span style={{ color: "var(--danger)" }}>No OTP data loaded</span>
+              }
+            </div>
+          )}
+        </div>
+
+        <div style={{ display: "flex", gap: 4, alignItems: "center", flexShrink: 0 }}>
+          <select
+            value={mode}
+            onChange={e => setMode(e.target.value)}
+            style={{ fontSize: 10, padding: "3px 4px", borderRadius: 4, border: "1px solid var(--border)",
+              background: "var(--surface2)", color: "var(--text)" }}
+          >
+            <option value="replace">Replace all OTP data</option>
+            <option value="merge">Merge (update matching stops)</option>
+          </select>
+          <label style={{
+            background: "var(--surface2)",
+            border: `1px solid ${isDone ? "var(--success)" : isError ? "var(--danger)" : "var(--border)"}`,
+            borderRadius: "var(--radius)", padding: "3px 8px", fontSize: 11,
+            cursor: isBusy ? "default" : "pointer", opacity: isBusy ? 0.6 : 1,
+          }}>
+            {isBusy ? "Uploading…" : isDone ? "✓ Done" : "↑ .xlsx"}
+            <input type="file" accept=".xlsx,.xls" style={{ display: "none" }} onChange={handleFile} disabled={isBusy} />
+          </label>
+        </div>
+      </div>
+
+      {isError && (
+        <div style={{ marginTop: 6, fontSize: 11, color: "var(--danger)",
+          background: "rgba(231,76,60,0.08)", borderRadius: 4, padding: "4px 8px" }}>
+          {status.replace("error: ", "")}
+        </div>
+      )}
+
+      {status === "preview_ready" && preview && (
+        <div style={{ marginTop: 8, background: "var(--bg)", border: "1px solid var(--border)",
+          borderRadius: "var(--radius)", padding: "10px 12px", fontSize: 11 }}>
+          <div style={{ fontWeight: 600, marginBottom: 4 }}>Ready to import</div>
+          <div style={{ color: "var(--muted)", marginBottom: 8 }}>
+            File: <span style={{ color: "var(--text)" }}>{preview.filename}</span>
+            <br />Mode: <span style={{ color: "var(--accent)" }}>{mode === "replace" ? "Replace all OTP data" : "Merge with existing"}</span>
+            <br />Reads the <strong>COMBINED</strong> sheet and maps all 169 stop records.
+          </div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button className="btn-primary" style={{ fontSize: 11, padding: "5px 14px" }} onClick={confirmImport}>
+              Confirm Import
+            </button>
+            <button className="btn-ghost" style={{ fontSize: 11, padding: "5px 14px" }} onClick={cancelPreview}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+function RidershipDataSection() {
+  return (
+    <div>
+      <div className="panel-title">Ridership Data Files</div>
+      <div style={{ fontSize: 11, color: "var(--muted)", marginBottom: 8 }}>
+        Upload new export files to append or update ridership history. Use <strong>Merge</strong> to keep existing records and add only new ones.
+      </div>
+      <div className="card" style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+        {BOARDINGS_FILE_CONFIGS.map(({ key, label, hint }) => (
+          <BoardingsFileRow key={key} fileKey={key} label={label} hint={hint} />
+        ))}
+        <OtpExcelRow />
+      </div>
+    </div>
+  );
+}
+
+
 // ── Network management panel ──────────────────────────────────────────────────
 function NetworkPanel({ stops, routes, onAdd, onUpdate, onDelete, onUpload }) {
   const [mode, setMode]             = useState("list");
@@ -531,13 +809,16 @@ function NetworkPanel({ stops, routes, onAdd, onUpdate, onDelete, onUpload }) {
 
       {/* CSV Upload / Data Management */}
       <div>
-        <div className="panel-title">Data Files</div>
+        <div className="panel-title">Network Data Files</div>
         <div className="card" style={{ display: "flex", flexDirection: "column", gap: 0 }}>
           {UPLOAD_TYPES.map(({ key, label, hint }) => (
             <DataFileManager key={key} fileType={key} label={label} hint={hint} onUpload={onUpload} />
           ))}
         </div>
       </div>
+
+      {/* Ridership / OTP data import */}
+      <RidershipDataSection />
 
       <hr className="divider" />
 
@@ -685,6 +966,7 @@ function ScenarioPanel({ stops, routes, onSimulationComplete, onSimulateRoute, o
   const [params, setParams] = useState({
     walking_radius_miles: 0.25, max_travel_minutes: 30,
     average_speed_mph: 15, dwell_time_minutes: 0.5, transfer_penalty_minutes: 5,
+    highway_speed_mph: 55, highway_threshold_miles: 1.0,
   });
   const [running, setRunning]           = useState(false);
   const [err, setErr]                   = useState("");
@@ -703,7 +985,7 @@ function ScenarioPanel({ stops, routes, onSimulationComplete, onSimulateRoute, o
       setProposedRoutes(draft.proposedRoutes);
       setProposedStops(draft.proposedStops || []);
       setCustomStops(draft.customStops || []);
-      setParams(p => draft.params || p);
+      setParams(p => ({ ...p, ...(draft.params || {}) }));
       // Re-preview the last route so the map reflects the restored state
       const last = draft.proposedRoutes[draft.proposedRoutes.length - 1];
       const baseId = last.route_id.replace(/_MOD$/, "");
@@ -948,9 +1230,11 @@ function ScenarioPanel({ stops, routes, onSimulationComplete, onSimulateRoute, o
           {[
             { key: "walking_radius_miles",    label: "Walking radius (mi)",   min: 0.1, max: 2,  step: 0.1  },
             { key: "max_travel_minutes",      label: "Max transit time (min)", min: 10,  max: 90, step: 5    },
-            { key: "average_speed_mph",       label: "Avg bus speed (mph)",    min: 8,   max: 30, step: 1    },
-            { key: "dwell_time_minutes",      label: "Dwell time / stop (min)",min: 0.25,max: 3,  step: 0.25 },
-            { key: "transfer_penalty_minutes",label: "Transfer penalty (min)", min: 0,   max: 15, step: 1    },
+            { key: "average_speed_mph",        label: "City street speed (mph)",     min: 8,   max: 35,  step: 1    },
+            { key: "highway_speed_mph",        label: "Highway speed (mph)",         min: 35,  max: 75,  step: 5    },
+            { key: "highway_threshold_miles",  label: "Highway threshold (mi)",      min: 0.25,max: 5,   step: 0.25 },
+            { key: "dwell_time_minutes",       label: "Dwell time / stop (min)",     min: 0.25,max: 3,   step: 0.25 },
+            { key: "transfer_penalty_minutes", label: "Transfer penalty (min)",      min: 0,   max: 15,  step: 1    },
           ].map(({ key, label, min, max, step }) => (
             <div key={key} className="form-row">
               <label style={{ display: "flex", justifyContent: "space-between" }}>

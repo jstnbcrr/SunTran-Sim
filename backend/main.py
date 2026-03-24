@@ -178,6 +178,8 @@ class SimulationParams(BaseModel):
     average_speed_mph: float = 15.0
     dwell_time_minutes: float = 0.5
     transfer_penalty_minutes: float = 5.0
+    highway_speed_mph: float = 55.0
+    highway_threshold_miles: float = 1.0
 
 
 # ── Public endpoints (no auth required) ───────────────────────────────────────
@@ -413,6 +415,261 @@ def download_backup(file_type: str, filename: str):
     )
 
 
+# ── Boardings / OTP merge config ───────────────────────────────────────────────
+
+BOARDINGS_FILES: dict[str, dict] = {
+    "boardings_by_month": {
+        "filename": "boardings_by_month.csv",
+        "key_cols": ["month"],
+        "date_col": "month",
+    },
+    "boardings_by_route": {
+        "filename": "boardings_by_route.csv",
+        "key_cols": ["route"],
+        "date_col": None,
+    },
+    "boardings_by_route_stop": {
+        "filename": "boardings_by_route_stop.csv",
+        "key_cols": ["route", "address"],
+        "date_col": None,
+    },
+    "boardings_by_stop": {
+        "filename": "boardings_by_stop.csv",
+        "key_cols": ["route", "stop_id"],
+        "date_col": None,
+    },
+    "boardings_by_dow": {
+        "filename": "boardings_by_dow.csv",
+        "key_cols": ["day_num"],
+        "date_col": None,
+    },
+    "boardings_by_route_dow": {
+        "filename": "boardings_by_route_dow.csv",
+        "key_cols": ["route", "day_num"],
+        "date_col": None,
+    },
+    "boardings_by_route_month": {
+        "filename": "boardings_by_route_month.csv",
+        "key_cols": ["route", "month"],
+        "date_col": "month",
+    },
+    "otp": {
+        "filename": "otp.csv",
+        "key_cols": ["route_name", "stop_name"],
+        "date_col": None,
+    },
+}
+
+
+def _boardings_file_info(file_type: str) -> dict:
+    """Return metadata (row count, date range, last modified) for a boardings file."""
+    cfg = BOARDINGS_FILES.get(file_type, {})
+    path = os.path.join(DATA_DIR, cfg.get("filename", ""))
+    if not os.path.exists(path):
+        return {"exists": False, "rows": 0, "date_range": None, "last_modified": None}
+    df = pd.read_csv(path)
+    info: dict = {
+        "exists": True,
+        "rows": len(df),
+        "date_range": None,
+        "last_modified": os.path.getmtime(path),
+    }
+    date_col = cfg.get("date_col")
+    if date_col and date_col in df.columns:
+        vals = df[date_col].dropna().astype(str)
+        if not vals.empty:
+            info["date_range"] = {"min": str(vals.min()), "max": str(vals.max())}
+    return info
+
+
+def _merge_boardings_df(
+    existing: pd.DataFrame,
+    incoming: pd.DataFrame,
+    key_cols: list[str],
+) -> tuple[pd.DataFrame, int, int]:
+    """Upsert incoming into existing using key_cols.  Returns (merged, added, updated)."""
+    if existing.empty:
+        return incoming.copy(), len(incoming), 0
+
+    valid_keys = [k for k in key_cols if k in existing.columns and k in incoming.columns]
+    if not valid_keys:
+        merged = pd.concat([existing, incoming], ignore_index=True)
+        return merged, len(incoming), 0
+
+    def make_key(df: pd.DataFrame) -> "pd.Series[str]":
+        return df[valid_keys].astype(str).agg("|".join, axis=1)
+
+    existing_key = make_key(existing)
+    incoming_key = make_key(incoming)
+
+    is_new = ~incoming_key.isin(existing_key)
+    is_update = incoming_key.isin(existing_key)
+    keep_existing = ~existing_key.isin(incoming_key[is_update])
+
+    merged = pd.concat(
+        [existing[keep_existing], incoming[is_update], incoming[is_new]],
+        ignore_index=True,
+    )
+    return merged, int(is_new.sum()), int(is_update.sum())
+
+
+def _parse_otp_excel(content: bytes) -> pd.DataFrame:
+    """Parse OTP Excel (Route_OTP_By_Route format) into otp.csv column layout."""
+    import re
+
+    xls = pd.read_excel(io.BytesIO(content), sheet_name="COMBINED")
+    xls.columns = [str(c).strip() for c in xls.columns]
+
+    def route_id(name: str) -> str:
+        m = re.search(r"Route\s+(\d+)", str(name), re.IGNORECASE)
+        return f"R{m.group(1)}" if m else ""
+
+    def direction(name: str) -> str:
+        m = re.search(r"\(([^)]+)\)\s*$", str(name))
+        return m.group(1) if m else ""
+
+    col_map = {
+        "Route Name": "route_name",
+        "Stop Name": "stop_name",
+        "Early%": "early_pct",
+        "On-Time%": "ontime_pct",
+        "Late%": "late_pct",
+        "Average Schedule Deviation (minutes)": "avg_deviation",
+        "Total Trips": "total_trips",
+        "Order": "order",
+    }
+    available = {k: v for k, v in col_map.items() if k in xls.columns}
+    df = xls.rename(columns=available)[list(available.values())].copy()
+    df["route_id"] = df["route_name"].apply(route_id)
+    df["direction"] = df["route_name"].apply(direction)
+
+    out_cols = [
+        "route_id", "route_name", "direction", "stop_name", "order",
+        "early_pct", "ontime_pct", "late_pct", "avg_deviation", "total_trips",
+    ]
+    for c in out_cols:
+        if c not in df.columns:
+            df[c] = None
+    return df[out_cols]
+
+
+# ── Boardings file info ─────────────────────────────────────────────────────────
+
+@protected.get("/api/data/boardings/{file_type}/info")
+def get_boardings_file_info(file_type: str):
+    if file_type not in BOARDINGS_FILES:
+        raise HTTPException(400, f"Unknown boardings file type: {file_type}")
+    return _boardings_file_info(file_type)
+
+
+# ── Boardings merge preview ─────────────────────────────────────────────────────
+
+@protected.post("/api/upload/boardings/{file_type}/preview")
+async def preview_boardings_upload(file_type: str, file: UploadFile = File(...)):
+    """Dry-run: return change summary without writing to disk."""
+    if file_type not in BOARDINGS_FILES:
+        raise HTTPException(400, f"Unknown boardings file type: {file_type}")
+    content = await file.read()
+    try:
+        incoming = pd.read_csv(io.BytesIO(content))
+    except Exception as e:
+        raise HTTPException(400, f"Could not parse CSV: {e}")
+
+    cfg = BOARDINGS_FILES[file_type]
+    path = os.path.join(DATA_DIR, cfg["filename"])
+    existing = pd.read_csv(path) if os.path.exists(path) else pd.DataFrame()
+    _, added, updated = _merge_boardings_df(existing, incoming, cfg["key_cols"])
+
+    new_date_range = None
+    if cfg["date_col"] and cfg["date_col"] in incoming.columns:
+        vals = incoming[cfg["date_col"]].dropna().astype(str)
+        if not vals.empty:
+            new_date_range = {"min": str(vals.min()), "max": str(vals.max())}
+
+    return {
+        "file_type": file_type,
+        "existing_rows": len(existing),
+        "incoming_rows": len(incoming),
+        "rows_to_add": added,
+        "rows_to_update": updated,
+        "new_date_range": new_date_range,
+    }
+
+
+# ── Boardings merge upload ──────────────────────────────────────────────────────
+
+@protected.post("/api/upload/boardings/{file_type}")
+async def upload_boardings(
+    file_type: str, file: UploadFile = File(...), mode: str = "merge"
+):
+    """Upload boardings CSV.  mode=merge (upsert) or mode=replace (overwrite)."""
+    if file_type not in BOARDINGS_FILES:
+        raise HTTPException(400, f"Unknown boardings file type: {file_type}")
+    content = await file.read()
+    try:
+        incoming = pd.read_csv(io.BytesIO(content))
+    except Exception as e:
+        raise HTTPException(400, f"Could not parse CSV: {e}")
+
+    cfg = BOARDINGS_FILES[file_type]
+    path = os.path.join(DATA_DIR, cfg["filename"])
+    backup_name = _backup_file(file_type) if os.path.exists(path) else None
+
+    if mode == "replace":
+        final_df, added, updated = incoming, len(incoming), 0
+    else:
+        existing = pd.read_csv(path) if os.path.exists(path) else pd.DataFrame()
+        final_df, added, updated = _merge_boardings_df(existing, incoming, cfg["key_cols"])
+
+    final_df.to_csv(path, index=False)
+    _load_boardings()
+
+    return {
+        "status": "uploaded",
+        "file_type": file_type,
+        "mode": mode,
+        "rows_added": added,
+        "rows_updated": updated,
+        "total_rows": len(final_df),
+        "backup": backup_name,
+    }
+
+
+# ── OTP Excel upload ────────────────────────────────────────────────────────────
+
+@protected.post("/api/upload/otp-excel")
+async def upload_otp_excel(file: UploadFile = File(...), mode: str = "merge"):
+    """Accept OTP .xlsx (Route_OTP_By_Route format) and merge into otp.csv."""
+    content = await file.read()
+    try:
+        incoming = _parse_otp_excel(content)
+    except Exception as e:
+        raise HTTPException(400, f"Could not parse OTP Excel: {e}")
+    if incoming.empty:
+        raise HTTPException(400, "No data found in COMBINED sheet")
+
+    path = os.path.join(DATA_DIR, "otp.csv")
+    backup_name = _backup_file("otp") if os.path.exists(path) else None
+
+    if mode == "replace":
+        final_df, added, updated = incoming, len(incoming), 0
+    else:
+        existing = pd.read_csv(path) if os.path.exists(path) else pd.DataFrame()
+        cfg = BOARDINGS_FILES["otp"]
+        final_df, added, updated = _merge_boardings_df(existing, incoming, cfg["key_cols"])
+
+    final_df.to_csv(path, index=False)
+    _load_otp()
+
+    return {
+        "status": "uploaded",
+        "rows_added": added,
+        "rows_updated": updated,
+        "total_rows": len(final_df),
+        "backup": backup_name,
+    }
+
+
 # ── Route CRUD ─────────────────────────────────────────────────────────────────
 
 @protected.post("/api/routes")
@@ -507,12 +764,16 @@ def run_simulation(params: SimulationParams):
         speed_mph=params.average_speed_mph,
         dwell_time=params.dwell_time_minutes,
         transfer_penalty=params.transfer_penalty_minutes,
+        highway_speed_mph=params.highway_speed_mph,
+        highway_threshold_miles=params.highway_threshold_miles,
     )
     proposed_graph = build_transit_graph(
         proposed_routes, merged_stops,
         speed_mph=params.average_speed_mph,
         dwell_time=params.dwell_time_minutes,
         transfer_penalty=params.transfer_penalty_minutes,
+        highway_speed_mph=params.highway_speed_mph,
+        highway_threshold_miles=params.highway_threshold_miles,
     )
 
     return compare_networks(

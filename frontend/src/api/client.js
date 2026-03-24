@@ -97,3 +97,26 @@ export const downloadBackup = (fileType, filename) =>
     a.href = url; a.download = filename; a.click();
     URL.revokeObjectURL(url);
   });
+
+// ── Boardings / OTP data import ───────────────────────────────────────────────
+
+export const getBoardingsInfo = (fileType) =>
+  api.get(`/data/boardings/${fileType}/info`).then(r => r.data);
+
+export const previewBoardingsUpload = (fileType, file) => {
+  const form = new FormData();
+  form.append("file", file);
+  return api.post(`/upload/boardings/${fileType}/preview`, form).then(r => r.data);
+};
+
+export const uploadBoardings = (fileType, file, mode = "merge") => {
+  const form = new FormData();
+  form.append("file", file);
+  return api.post(`/upload/boardings/${fileType}?mode=${mode}`, form).then(r => r.data);
+};
+
+export const uploadOtpExcel = (file, mode = "merge") => {
+  const form = new FormData();
+  form.append("file", file);
+  return api.post(`/upload/otp-excel?mode=${mode}`, form).then(r => r.data);
+};
