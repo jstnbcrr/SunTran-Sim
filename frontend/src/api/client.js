@@ -103,6 +103,14 @@ export const downloadBackup = (fileType, filename) =>
 export const getBoardingsInfo = (fileType) =>
   api.get(`/data/boardings/${fileType}/info`).then(r => r.data);
 
+export const downloadBoardingsCsv = (fileType, filename) =>
+  api.get(`/data/boardings/${fileType}/download`, { responseType: "blob" }).then(r => {
+    const url = URL.createObjectURL(r.data);
+    const a = document.createElement("a");
+    a.href = url; a.download = filename; a.click();
+    URL.revokeObjectURL(url);
+  });
+
 export const previewBoardingsUpload = (fileType, file) => {
   const form = new FormData();
   form.append("file", file);

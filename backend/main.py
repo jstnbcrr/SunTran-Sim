@@ -562,6 +562,22 @@ def get_boardings_file_info(file_type: str):
     return _boardings_file_info(file_type)
 
 
+@protected.get("/api/data/boardings/{file_type}/download")
+def download_boardings_file(file_type: str):
+    """Download the current CSV for a boardings/otp file type."""
+    if file_type not in BOARDINGS_FILES:
+        raise HTTPException(400, f"Unknown boardings file type: {file_type}")
+    cfg = BOARDINGS_FILES[file_type]
+    path = os.path.join(DATA_DIR, cfg["filename"])
+    if not os.path.exists(path):
+        raise HTTPException(404, f"No {cfg['filename']} found")
+    return StreamingResponse(
+        open(path, "rb"),
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename={cfg['filename']}"},
+    )
+
+
 # ── Boardings merge preview ─────────────────────────────────────────────────────
 
 @protected.post("/api/upload/boardings/{file_type}/preview")

@@ -7,6 +7,7 @@ import {
   deleteBackup,
   downloadBackup,
   getBoardingsInfo,
+  downloadBoardingsCsv,
   previewBoardingsUpload,
   uploadBoardings,
   uploadOtpExcel,
@@ -255,6 +256,12 @@ function BoardingsFileRow({ fileKey, label, hint }) {
           )}
         </div>
         <div style={{ display: "flex", gap: 4, alignItems: "center", flexShrink: 0 }}>
+          <button
+            className="btn-ghost"
+            title="Download current file"
+            onClick={() => downloadBoardingsCsv(fileKey, label)}
+            style={{ fontSize: 11, padding: "3px 8px" }}
+          >↓</button>
           <select value={mode} onChange={e => setMode(e.target.value)}
             style={{ fontSize: 10, padding: "3px 4px", borderRadius: 4,
               border: "1px solid var(--border)", background: "var(--surface2)", color: "var(--text)" }}>
@@ -378,6 +385,12 @@ function OtpExcelRow() {
           )}
         </div>
         <div style={{ display: "flex", gap: 4, alignItems: "center", flexShrink: 0 }}>
+          <button
+            className="btn-ghost"
+            title="Download current otp.csv"
+            onClick={() => downloadBoardingsCsv("otp", "otp.csv")}
+            style={{ fontSize: 11, padding: "3px 8px" }}
+          >↓</button>
           <select value={mode} onChange={e => setMode(e.target.value)}
             style={{ fontSize: 10, padding: "3px 4px", borderRadius: 4,
               border: "1px solid var(--border)", background: "var(--surface2)", color: "var(--text)" }}>
