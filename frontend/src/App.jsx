@@ -24,10 +24,11 @@ import {
 } from "./api/client";
 import RidershipPanel from "./components/RidershipPanel";
 import InstructionsPanel from "./components/InstructionsPanel";
+import DataImportPanel from "./components/DataImportPanel";
 import "./App.css";
 import suntranLogo from "./assets/suntran-logo.png";
 
-const TABS = ["Map", "Simulate", "Metrics", "Ridership", "Instructions"];
+const TABS = ["Map", "Simulate", "Metrics", "Ridership", "Import", "Instructions"];
 
 export default function App() {
   const [activeTab, setActiveTab]   = useState("Map");
@@ -287,6 +288,7 @@ export default function App() {
             byRouteStop={boardingsRouteStop}
           />
         )}
+        {activeTab === "Import" && <DataImportPanel onUpload={handleUpload} />}
         {activeTab === "Instructions" && <InstructionsPanel />}
       </main>
     </div>
