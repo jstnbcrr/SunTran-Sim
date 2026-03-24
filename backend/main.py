@@ -857,6 +857,342 @@ async def upload_otp_excel(file: UploadFile = File(...), mode: str = "merge"):
     }
 
 
+# ── Structured import: template definitions ────────────────────────────────────
+#
+# Each slot defines the exact columns required, example values, a human label,
+# a description, and how the data is stored / reloaded.
+
+IMPORT_SLOTS: dict[str, dict] = {
+    "boardings_by_month": {
+        "label":   "Monthly Ridership Summary",
+        "desc":    "Total boardings and alightings aggregated per calendar month.",
+        "columns": ["month", "total_in", "total_out", "unique_days", "avg_daily_in", "avg_daily_out"],
+        "example": ["2026-03", 31500, 32100, 22, 1431.8, 1459.1],
+        "filename": "boardings_by_month.csv",
+        "key_cols": ["month"],
+        "date_col": "month",
+        "reload": "_load_boardings",
+        "group": "ridership",
+    },
+    "boardings_by_route_month": {
+        "label":   "Route × Month Ridership",
+        "desc":    "Per-route boardings broken down by month.",
+        "columns": ["route", "month", "total_in", "total_out", "unique_days", "avg_daily_in", "avg_daily_out"],
+        "example": ["Route 2 Riverside", "2026-03", 8200, 9100, 22, 372.7, 413.6],
+        "filename": "boardings_by_route_month.csv",
+        "key_cols": ["route", "month"],
+        "date_col": "month",
+        "reload": "_load_boardings",
+        "group": "ridership",
+    },
+    "boardings_by_route": {
+        "label":   "Route Totals",
+        "desc":    "Cumulative boardings per route across all recorded days.",
+        "columns": ["route", "total_in", "total_out", "unique_days", "avg_daily_in", "avg_daily_out"],
+        "example": ["Route 2 Riverside", 80475, 93623, 336, 239.5, 278.6],
+        "filename": "boardings_by_route.csv",
+        "key_cols": ["route"],
+        "date_col": None,
+        "reload": "_load_boardings",
+        "group": "ridership",
+    },
+    "boardings_by_route_stop": {
+        "label":   "Route × Stop Boardings",
+        "desc":    "Boardings and alightings per stop per route.",
+        "columns": ["route", "address", "total_in", "total_out", "avg_daily_in", "avg_daily_out", "days"],
+        "example": ["Route 2 Riverside", "Transit Center", 37021, 56856, 110.2, 169.2, 336],
+        "filename": "boardings_by_route_stop.csv",
+        "key_cols": ["route", "address"],
+        "date_col": None,
+        "reload": "_load_boardings",
+        "group": "ridership",
+    },
+    "boardings_by_stop": {
+        "label":   "Stop-Level Boardings",
+        "desc":    "Boardings at every individual stop across all routes.",
+        "columns": ["route", "stop_id", "address", "total_in", "total_out", "avg_daily_in", "avg_daily_out", "days"],
+        "example": ["Route 1 Red Cliffs (B)", "143486", "449 North 2450 East", 946, 1017, 2.88, 3.09, 329],
+        "filename": "boardings_by_stop.csv",
+        "key_cols": ["route", "stop_id"],
+        "date_col": None,
+        "reload": "_load_boardings",
+        "group": "ridership",
+    },
+    "boardings_by_dow": {
+        "label":   "Day-of-Week Ridership",
+        "desc":    "Average and total boardings for each day of the week.",
+        "columns": ["day_num", "day_name", "avg_in", "avg_out", "total_in", "total_out"],
+        "example": [0, "Monday", 7.87, 8.56, 69691, 75748],
+        "filename": "boardings_by_dow.csv",
+        "key_cols": ["day_num"],
+        "date_col": None,
+        "reload": "_load_boardings",
+        "group": "ridership",
+    },
+    "boardings_by_route_dow": {
+        "label":   "Route × Day-of-Week",
+        "desc":    "Per-route ridership broken down by day of the week.",
+        "columns": ["route", "day_num", "day_name", "avg_in", "avg_out", "total_in", "total_out"],
+        "example": ["Route 1 Red Cliffs (A)", 0, "Monday", 10.5, 10.8, 6259, 6435],
+        "filename": "boardings_by_route_dow.csv",
+        "key_cols": ["route", "day_num"],
+        "date_col": None,
+        "reload": "_load_boardings",
+        "group": "ridership",
+    },
+    "otp": {
+        "label":   "On-Time Performance",
+        "desc":    "Early / on-time / late percentages per stop per route.",
+        "columns": ["route_id", "route_name", "direction", "stop_name", "order",
+                    "early_pct", "ontime_pct", "late_pct", "avg_deviation", "total_trips"],
+        "example": ["R1", "Route 1 Red Cliffs (A)", "A", "Transit Center", 1,
+                    45.98, 53.69, 0.33, 1.39, 2414],
+        "filename": "otp.csv",
+        "key_cols": ["route_name", "stop_name"],
+        "date_col": None,
+        "reload": "_load_otp",
+        "group": "otp",
+    },
+    "stops": {
+        "label":   "Bus Stops",
+        "desc":    "All bus stop locations used in routing and the map.",
+        "columns": ["stop_id", "stop_name", "latitude", "longitude"],
+        "example": ["143486", "449 North 2450 East", 37.1139, -113.5401],
+        "filename": "stops.csv",
+        "key_cols": ["stop_id"],
+        "date_col": None,
+        "reload": "_load_data",
+        "group": "network",
+    },
+    "routes": {
+        "label":   "Routes",
+        "desc":    "Route definitions with ordered stop lists.",
+        "columns": ["route_id", "route_name", "color", "stop_ids"],
+        "example": ["R1", "Route 1 Red Cliffs (A)", "#e74c3c", "143486|143487|143488"],
+        "filename": "routes.csv",
+        "key_cols": ["route_id"],
+        "date_col": None,
+        "reload": "_load_data",
+        "group": "network",
+    },
+    "employment_hubs": {
+        "label":   "Employment Hubs",
+        "desc":    "Major employment destinations for accessibility analysis.",
+        "columns": ["hub_name", "latitude", "longitude", "estimated_workers"],
+        "example": ["Intermountain Health", 37.1052, -113.5841, 1200],
+        "filename": "employment_hubs.csv",
+        "key_cols": ["hub_name"],
+        "date_col": None,
+        "reload": "_load_data",
+        "group": "network",
+    },
+}
+
+
+def _generate_template(slot_key: str) -> bytes:
+    """Return a styled .xlsx template file for the given import slot."""
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+
+    slot = IMPORT_SLOTS[slot_key]
+    wb = Workbook()
+    ws = wb.active
+    ws.title = slot_key
+
+    header_fill = PatternFill("solid", fgColor="1A3A5C")
+    example_fill = PatternFill("solid", fgColor="1E2A3A")
+    header_font  = Font(bold=True, color="FFFFFF", size=11)
+    example_font = Font(color="A0B4C8", size=10, italic=True)
+    thin = Border(
+        left=Side(style="thin", color="2C4A6B"),
+        right=Side(style="thin", color="2C4A6B"),
+        top=Side(style="thin", color="2C4A6B"),
+        bottom=Side(style="thin", color="2C4A6B"),
+    )
+
+    # Row 1: headers
+    for col_idx, col_name in enumerate(slot["columns"], start=1):
+        cell = ws.cell(row=1, column=col_idx, value=col_name)
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = Alignment(horizontal="center", vertical="center")
+        cell.border = thin
+        ws.column_dimensions[cell.column_letter].width = max(14, len(col_name) + 4)
+
+    # Row 2: example data
+    for col_idx, value in enumerate(slot["example"], start=1):
+        cell = ws.cell(row=2, column=col_idx, value=value)
+        cell.font = example_font
+        cell.fill = example_fill
+        cell.alignment = Alignment(vertical="center")
+        cell.border = thin
+
+    ws.row_dimensions[1].height = 22
+    ws.row_dimensions[2].height = 18
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    return buf.getvalue()
+
+
+@app.get("/api/templates/{slot_key}")
+def download_template(slot_key: str):
+    """Return a blank .xlsx import template for the given slot."""
+    if slot_key not in IMPORT_SLOTS:
+        raise HTTPException(400, f"Unknown import slot: {slot_key}")
+    xlsx_bytes = _generate_template(slot_key)
+    slot = IMPORT_SLOTS[slot_key]
+    fname = slot["filename"].replace(".csv", "_template.xlsx")
+    return StreamingResponse(
+        io.BytesIO(xlsx_bytes),
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename={fname}"},
+    )
+
+
+@protected.get("/api/import/slots")
+def list_import_slots():
+    """Return slot metadata (without example data) for the frontend."""
+    return {
+        k: {
+            "label":    v["label"],
+            "desc":     v["desc"],
+            "columns":  v["columns"],
+            "filename": v["filename"],
+            "date_col": v["date_col"],
+            "group":    v["group"],
+        }
+        for k, v in IMPORT_SLOTS.items()
+    }
+
+
+@protected.get("/api/import/slots/{slot_key}/info")
+def slot_current_info(slot_key: str):
+    """Row count + date range for a slot's current data file."""
+    if slot_key not in IMPORT_SLOTS:
+        raise HTTPException(400, f"Unknown slot: {slot_key}")
+    slot = IMPORT_SLOTS[slot_key]
+    path = os.path.join(DATA_DIR, slot["filename"])
+    if not os.path.exists(path):
+        return {"exists": False, "rows": 0, "date_range": None}
+    df = pd.read_csv(path)
+    info: dict = {"exists": True, "rows": len(df), "date_range": None,
+                  "last_modified": os.path.getmtime(path)}
+    if slot["date_col"] and slot["date_col"] in df.columns:
+        vals = df[slot["date_col"]].dropna().astype(str)
+        if not vals.empty:
+            info["date_range"] = {"min": str(vals.min()), "max": str(vals.max())}
+    return info
+
+
+@protected.post("/api/import/slots/{slot_key}/preview")
+async def slot_upload_preview(slot_key: str, file: UploadFile = File(...)):
+    """Validate columns and return merge diff without writing."""
+    if slot_key not in IMPORT_SLOTS:
+        raise HTTPException(400, f"Unknown slot: {slot_key}")
+    slot = IMPORT_SLOTS[slot_key]
+    content = await file.read()
+
+    try:
+        df = pd.read_excel(io.BytesIO(content)) if file.filename.endswith((".xlsx", ".xls")) \
+             else pd.read_csv(io.BytesIO(content))
+    except Exception as e:
+        raise HTTPException(400, f"Could not parse file: {e}")
+
+    # Strict column validation
+    required = set(slot["columns"])
+    actual   = set(df.columns)
+    missing  = required - actual
+    extra    = actual - required
+    if missing:
+        raise HTTPException(400, {
+            "error": "column_mismatch",
+            "message": f"File is missing required columns: {sorted(missing)}",
+            "missing": sorted(missing),
+            "extra":   sorted(extra),
+            "expected": slot["columns"],
+            "got": sorted(actual),
+        })
+
+    path = os.path.join(DATA_DIR, slot["filename"])
+    existing = pd.read_csv(path) if os.path.exists(path) else pd.DataFrame()
+    _, added, updated = _merge_boardings_df(existing, df, slot["key_cols"])
+
+    date_range = None
+    if slot["date_col"] and slot["date_col"] in df.columns:
+        vals = df[slot["date_col"]].dropna().astype(str)
+        if not vals.empty:
+            date_range = {"min": str(vals.min()), "max": str(vals.max())}
+
+    return {
+        "slot_key": slot_key,
+        "existing_rows": len(existing),
+        "incoming_rows": len(df),
+        "rows_to_add":    added,
+        "rows_to_update": updated,
+        "date_range": date_range,
+        "columns_ok": True,
+    }
+
+
+@protected.post("/api/import/slots/{slot_key}")
+async def slot_upload(slot_key: str, file: UploadFile = File(...), mode: str = "merge"):
+    """Validate and import a file into the given slot."""
+    if slot_key not in IMPORT_SLOTS:
+        raise HTTPException(400, f"Unknown slot: {slot_key}")
+    slot = IMPORT_SLOTS[slot_key]
+    content = await file.read()
+
+    try:
+        df = pd.read_excel(io.BytesIO(content)) if file.filename.endswith((".xlsx", ".xls")) \
+             else pd.read_csv(io.BytesIO(content))
+    except Exception as e:
+        raise HTTPException(400, f"Could not parse file: {e}")
+
+    required = set(slot["columns"])
+    missing  = required - set(df.columns)
+    if missing:
+        raise HTTPException(400, {
+            "error": "column_mismatch",
+            "message": f"Missing columns: {sorted(missing)}",
+            "missing": sorted(missing),
+            "expected": slot["columns"],
+        })
+
+    # Keep only the expected columns, in order
+    df = df[slot["columns"]]
+
+    path = os.path.join(DATA_DIR, slot["filename"])
+    backup_name = _backup_file(slot_key) if os.path.exists(path) else None
+
+    if mode == "replace" or slot["group"] == "network":
+        final_df, added, updated = df, len(df), 0
+    else:
+        existing = pd.read_csv(path) if os.path.exists(path) else pd.DataFrame()
+        final_df, added, updated = _merge_boardings_df(existing, df, slot["key_cols"])
+
+    final_df.to_csv(path, index=False)
+
+    # Reload the right in-memory state
+    reload_fn = slot["reload"]
+    if reload_fn == "_load_data":
+        _load_data()
+    elif reload_fn == "_load_boardings":
+        _load_boardings()
+    elif reload_fn == "_load_otp":
+        _load_otp()
+
+    return {
+        "status": "imported",
+        "slot_key": slot_key,
+        "mode": mode,
+        "rows_added": added,
+        "rows_updated": updated,
+        "total_rows": len(final_df),
+        "backup": backup_name,
+    }
+
+
 # ── Route CRUD ─────────────────────────────────────────────────────────────────
 
 @protected.post("/api/routes")
