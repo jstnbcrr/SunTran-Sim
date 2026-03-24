@@ -553,6 +553,177 @@ def _parse_otp_excel(content: bytes) -> pd.DataFrame:
     return df[out_cols]
 
 
+# ── Smart auto-detection ───────────────────────────────────────────────────────
+
+# Detection rules: ordered most-specific → least-specific.
+# Each entry: (file_type, required_cols_set, display_label)
+_DETECT_RULES: list[tuple[str, set[str], str]] = [
+    ("boardings_by_route_month", {"route", "month", "total_in"},             "Boardings by Route × Month"),
+    ("boardings_by_route_stop",  {"route", "address", "total_in"},           "Boardings by Route × Stop"),
+    ("boardings_by_route_dow",   {"route", "day_num", "day_name"},           "Boardings by Route × Day of Week"),
+    ("boardings_by_month",       {"month", "total_in", "unique_days"},       "Boardings by Month"),
+    ("boardings_by_stop",        {"stop_id", "address", "total_in"},         "Boardings by Stop"),
+    ("boardings_by_dow",         {"day_num", "day_name", "total_in"},        "Boardings by Day of Week"),
+    ("boardings_by_route",       {"route", "total_in", "unique_days"},       "Boardings by Route"),
+    ("ridership",                {"hourly_boardings", "hourly_alightings"},  "Hourly Ridership"),
+    ("stops",                    {"stop_id", "stop_name", "latitude", "longitude"}, "Bus Stops"),
+    ("routes",                   {"route_id", "route_name", "stop_ids"},     "Routes"),
+    ("employment_hubs",          {"hub_name", "estimated_workers"},          "Employment Hubs"),
+    ("otp",                      {"early_pct", "ontime_pct", "late_pct"},    "On-Time Performance"),
+]
+
+_NETWORK_TYPES = {"stops", "routes", "ridership", "employment_hubs"}
+
+
+def _detect_csv_type(cols: set[str]) -> tuple[Optional[str], str]:
+    """Return (file_type, display_label) or (None, 'Unknown') for a CSV column set."""
+    for file_type, required, label in _DETECT_RULES:
+        if required.issubset(cols):
+            return file_type, label
+    return None, "Unknown — could not identify"
+
+
+def _smart_import_file(content: bytes, filename: str, mode: str = "merge") -> dict:
+    """
+    Auto-detect and import a single file (CSV or XLSX).
+    Returns a result dict describing what happened.
+    """
+    lower = filename.lower()
+
+    # ── Excel → try OTP parse ──────────────────────────────────────────────────
+    if lower.endswith(".xlsx") or lower.endswith(".xls"):
+        try:
+            incoming = _parse_otp_excel(content)
+            file_type = "otp"
+            label = "On-Time Performance (Excel)"
+        except Exception as e:
+            return {"filename": filename, "status": "error", "error": str(e),
+                    "detected_as": "Excel", "label": "Excel"}
+
+        path = os.path.join(DATA_DIR, "otp.csv")
+        backup_name = _backup_file("otp") if os.path.exists(path) else None
+        if mode == "replace":
+            final_df, added, updated = incoming, len(incoming), 0
+        else:
+            existing = pd.read_csv(path) if os.path.exists(path) else pd.DataFrame()
+            cfg = BOARDINGS_FILES["otp"]
+            final_df, added, updated = _merge_boardings_df(existing, incoming, cfg["key_cols"])
+        final_df.to_csv(path, index=False)
+        _load_otp()
+        return {"filename": filename, "status": "imported", "detected_as": file_type,
+                "label": label, "rows_added": added, "rows_updated": updated,
+                "total_rows": len(final_df), "backup": backup_name}
+
+    # ── CSV ────────────────────────────────────────────────────────────────────
+    try:
+        df = pd.read_csv(io.BytesIO(content))
+    except Exception as e:
+        return {"filename": filename, "status": "error", "error": f"Could not parse CSV: {e}",
+                "detected_as": None, "label": "Unknown"}
+
+    cols = set(df.columns)
+    file_type, label = _detect_csv_type(cols)
+
+    if file_type is None:
+        return {"filename": filename, "status": "skipped",
+                "detected_as": None, "label": "Unknown — could not identify",
+                "rows": len(df), "columns": sorted(cols)}
+
+    # Network core files (stops, routes, ridership, employment_hubs)
+    if file_type in _NETWORK_TYPES:
+        backup_name = _backup_file(file_type)
+        dest = os.path.join(DATA_DIR, f"{file_type}.csv")
+        with open(dest, "wb") as f:
+            f.write(content)
+        _load_data()
+        return {"filename": filename, "status": "imported", "detected_as": file_type,
+                "label": label, "rows_added": len(df), "rows_updated": 0,
+                "total_rows": len(df), "backup": backup_name}
+
+    # Boardings / OTP CSV files (merge mode)
+    cfg = BOARDINGS_FILES.get(file_type, {})
+    path = os.path.join(DATA_DIR, cfg.get("filename", f"{file_type}.csv"))
+    backup_name = _backup_file(file_type) if os.path.exists(path) else None
+    if mode == "replace":
+        final_df, added, updated = df, len(df), 0
+    else:
+        existing = pd.read_csv(path) if os.path.exists(path) else pd.DataFrame()
+        final_df, added, updated = _merge_boardings_df(existing, df, cfg.get("key_cols", []))
+    final_df.to_csv(path, index=False)
+    _load_boardings()
+    return {"filename": filename, "status": "imported", "detected_as": file_type,
+            "label": label, "rows_added": added, "rows_updated": updated,
+            "total_rows": len(final_df), "backup": backup_name}
+
+
+@protected.post("/api/upload/smart/preview")
+async def smart_import_preview(files: list[UploadFile] = File(...)):
+    """Identify each file without writing anything to disk."""
+    results = []
+    for upload in files:
+        content = await upload.read()
+        lower = upload.filename.lower()
+        if lower.endswith(".xlsx") or lower.endswith(".xls"):
+            try:
+                df = _parse_otp_excel(content)
+                results.append({
+                    "filename": upload.filename,
+                    "detected_as": "otp",
+                    "label": "On-Time Performance (Excel)",
+                    "incoming_rows": len(df),
+                    "status": "ready",
+                })
+            except Exception as e:
+                results.append({"filename": upload.filename, "detected_as": None,
+                                 "label": "Excel parse error", "status": "error", "error": str(e)})
+        else:
+            try:
+                df = pd.read_csv(io.BytesIO(content))
+            except Exception as e:
+                results.append({"filename": upload.filename, "detected_as": None,
+                                 "label": "CSV parse error", "status": "error", "error": str(e)})
+                continue
+            cols = set(df.columns)
+            file_type, label = _detect_csv_type(cols)
+            entry: dict = {
+                "filename": upload.filename,
+                "detected_as": file_type,
+                "label": label,
+                "incoming_rows": len(df),
+                "status": "ready" if file_type else "unknown",
+            }
+            # For boardings files, add merge preview numbers
+            if file_type and file_type not in _NETWORK_TYPES and file_type in BOARDINGS_FILES:
+                cfg = BOARDINGS_FILES[file_type]
+                path = os.path.join(DATA_DIR, cfg["filename"])
+                existing = pd.read_csv(path) if os.path.exists(path) else pd.DataFrame()
+                _, added, updated = _merge_boardings_df(existing, df, cfg["key_cols"])
+                entry["rows_to_add"] = added
+                entry["rows_to_update"] = updated
+                entry["existing_rows"] = len(existing)
+                if cfg["date_col"] and cfg["date_col"] in df.columns:
+                    vals = df[cfg["date_col"]].dropna().astype(str)
+                    if not vals.empty:
+                        entry["date_range"] = {"min": str(vals.min()), "max": str(vals.max())}
+            results.append(entry)
+    return {"files": results}
+
+
+@protected.post("/api/upload/smart")
+async def smart_import(files: list[UploadFile] = File(...), mode: str = "merge"):
+    """Auto-detect and import all uploaded files in one request."""
+    results = []
+    for upload in files:
+        content = await upload.read()
+        result = _smart_import_file(content, upload.filename, mode)
+        results.append(result)
+    imported = sum(1 for r in results if r["status"] == "imported")
+    skipped  = sum(1 for r in results if r["status"] == "skipped")
+    errors   = sum(1 for r in results if r["status"] == "error")
+    return {"status": "done", "imported": imported, "skipped": skipped,
+            "errors": errors, "files": results}
+
+
 # ── Boardings file info ─────────────────────────────────────────────────────────
 
 @protected.get("/api/data/boardings/{file_type}/info")

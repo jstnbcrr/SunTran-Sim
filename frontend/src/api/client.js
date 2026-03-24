@@ -128,3 +128,15 @@ export const uploadOtpExcel = (file, mode = "merge") => {
   form.append("file", file);
   return api.post(`/upload/otp-excel?mode=${mode}`, form).then(r => r.data);
 };
+
+export const smartImportPreview = (files) => {
+  const form = new FormData();
+  files.forEach(f => form.append("files", f));
+  return api.post("/upload/smart/preview", form).then(r => r.data);
+};
+
+export const smartImport = (files, mode = "merge") => {
+  const form = new FormData();
+  files.forEach(f => form.append("files", f));
+  return api.post(`/upload/smart?mode=${mode}`, form).then(r => r.data);
+};

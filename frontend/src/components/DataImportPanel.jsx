@@ -1,438 +1,185 @@
-import React, { useState, useEffect } from "react";
-import {
-  uploadCsv,
-  downloadCurrentCsv,
-  listBackups,
-  restoreBackup,
-  deleteBackup,
-  downloadBackup,
-  getBoardingsInfo,
-  downloadBoardingsCsv,
-  previewBoardingsUpload,
-  uploadBoardings,
-  uploadOtpExcel,
-} from "../api/client";
+import React, { useState, useRef, useCallback } from "react";
+import { smartImportPreview, smartImport, downloadCurrentCsv, downloadBoardingsCsv } from "../api/client";
 
-// ── Network core files ─────────────────────────────────────────────────────────
-
-const NETWORK_FILES = [
-  { key: "stops",           label: "stops.csv",           hint: "stop_id, stop_name, latitude, longitude" },
-  { key: "routes",          label: "routes.csv",          hint: "route_id, route_name, color, stop_ids (pipe-separated)" },
-  { key: "ridership",       label: "ridership.csv",       hint: "route_id, stop_id, hour, hourly_boardings, hourly_alightings" },
-  { key: "employment_hubs", label: "employment_hubs.csv", hint: "hub_name, latitude, longitude, estimated_workers" },
-];
-
-function DataFileManager({ fileType, label, hint, onUpload }) {
-  const [uploadStatus, setUploadStatus] = useState(null);
-  const [backups, setBackups]           = useState(null);
-  const [expanded, setExpanded]         = useState(false);
-  const [confirmRestore, setConfirmRestore] = useState(null);
-  const [busyBackup, setBusyBackup]     = useState(null);
-
-  const loadBackups = async () => {
-    try {
-      const data = await listBackups(fileType);
-      setBackups(data.backups || []);
-    } catch {
-      setBackups([]);
-    }
+// ── Status badge ───────────────────────────────────────────────────────────────
+function StatusBadge({ status }) {
+  const map = {
+    ready:    { bg: "rgba(46,204,113,0.12)", color: "var(--success)", text: "Ready" },
+    imported: { bg: "rgba(46,204,113,0.12)", color: "var(--success)", text: "✓ Imported" },
+    unknown:  { bg: "rgba(241,196,15,0.15)", color: "#f1c40f",        text: "⚠ Unrecognized" },
+    skipped:  { bg: "rgba(241,196,15,0.15)", color: "#f1c40f",        text: "Skipped" },
+    error:    { bg: "rgba(231,76,60,0.12)",  color: "var(--danger)",  text: "Error" },
   };
-
-  const toggleExpanded = () => {
-    if (!expanded && backups === null) loadBackups();
-    setExpanded(v => !v);
-  };
-
-  const handleUpload = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    e.target.value = "";
-    setUploadStatus("loading");
-    const result = await onUpload(fileType, file);
-    if (result?.success === false) {
-      setUploadStatus(`error: ${result.error}`);
-    } else {
-      setUploadStatus("ok");
-      setTimeout(() => setUploadStatus(null), 3000);
-      if (expanded) loadBackups();
-    }
-  };
-
-  const handleRestore = async (filename) => {
-    if (confirmRestore !== filename) { setConfirmRestore(filename); return; }
-    setBusyBackup(filename);
-    try {
-      await restoreBackup(fileType, filename);
-      setConfirmRestore(null);
-      await loadBackups();
-    } finally {
-      setBusyBackup(null);
-    }
-  };
-
-  const handleDelete = async (filename) => {
-    setBusyBackup(filename);
-    try {
-      await deleteBackup(fileType, filename);
-      setBackups(b => b.filter(x => x.filename !== filename));
-    } finally {
-      setBusyBackup(null);
-    }
-  };
-
-  const formatSize = (bytes) => bytes < 1024 ? `${bytes}B` : `${(bytes / 1024).toFixed(1)}KB`;
-  const formatDate = (ts) => new Date(ts * 1000).toLocaleString(undefined, {
-    month: "short", day: "numeric", hour: "2-digit", minute: "2-digit",
-  });
-
-  const isLoading = uploadStatus === "loading";
-  const isOk      = uploadStatus === "ok";
-  const isError   = uploadStatus?.startsWith("error:");
-
+  const s = map[status] || map.unknown;
   return (
-    <div style={{ borderBottom: "1px solid var(--border)", paddingBottom: 10, marginBottom: 2 }}>
-      <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
-        <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 12, fontWeight: 600 }}>{label}</div>
-          <div style={{ fontSize: 10, color: "var(--muted)", marginTop: 1 }}>{hint}</div>
-        </div>
-        <div style={{ display: "flex", gap: 4, flexShrink: 0, alignItems: "center" }}>
-          <button className="btn-ghost" title="Download current file"
-            onClick={() => downloadCurrentCsv(fileType)}
-            style={{ fontSize: 11, padding: "3px 8px" }}>↓</button>
-          <label style={{
-            background: "var(--surface2)",
-            border: `1px solid ${isOk ? "var(--success)" : isError ? "var(--danger)" : "var(--border)"}`,
-            borderRadius: "var(--radius)", padding: "3px 8px",
-            fontSize: 11, cursor: isLoading ? "default" : "pointer",
-            color: isOk ? "var(--success)" : isError ? "var(--danger)" : "var(--text)",
-            fontWeight: 600, whiteSpace: "nowrap",
-          }}>
-            {isLoading ? "Saving…" : isOk ? "✓ Saved" : "↑ Upload"}
-            <input type="file" accept=".csv" hidden disabled={isLoading} onChange={handleUpload} />
-          </label>
-          <button className="btn-ghost" title="Backup history" onClick={toggleExpanded}
-            style={{ fontSize: 11, padding: "3px 8px", color: expanded ? "var(--accent)" : "var(--muted)" }}>
-            {expanded ? "▲" : "▼"}
-          </button>
-        </div>
-      </div>
-
-      {isError && (
-        <div style={{ marginTop: 6, fontSize: 11, color: "var(--danger)",
-          background: "rgba(231,76,60,0.08)", borderRadius: 4, padding: "4px 8px" }}>
-          {uploadStatus.replace("error: ", "")}
-        </div>
-      )}
-
-      {expanded && (
-        <div style={{ marginTop: 8, background: "var(--bg)", borderRadius: "var(--radius)",
-          border: "1px solid var(--border)", overflow: "hidden" }}>
-          {backups === null ? (
-            <div style={{ padding: "8px 10px", fontSize: 11, color: "var(--muted)" }}>Loading…</div>
-          ) : backups.length === 0 ? (
-            <div style={{ padding: "8px 10px", fontSize: 11, color: "var(--muted)" }}>
-              No backups yet. Backups are created automatically before each upload.
-            </div>
-          ) : (
-            backups.map(b => (
-              <div key={b.filename} style={{
-                display: "flex", alignItems: "center", gap: 6,
-                padding: "6px 10px", borderBottom: "1px solid var(--border)", fontSize: 11,
-              }}>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ color: "var(--text)", fontFamily: "monospace", fontSize: 10,
-                    overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {formatDate(b.created_at)}
-                  </div>
-                  <div style={{ color: "var(--muted)", fontSize: 10 }}>{formatSize(b.size_bytes)}</div>
-                </div>
-                <button className="btn-ghost" style={{ fontSize: 10, padding: "2px 6px" }}
-                  title="Download this backup"
-                  onClick={() => downloadBackup(fileType, b.filename)}
-                  disabled={busyBackup === b.filename}>↓</button>
-                <button
-                  className={confirmRestore === b.filename ? "btn-primary" : "btn-ghost"}
-                  style={{ fontSize: 10, padding: "2px 6px", whiteSpace: "nowrap" }}
-                  onClick={() => handleRestore(b.filename)}
-                  disabled={busyBackup === b.filename}>
-                  {confirmRestore === b.filename ? "Confirm?" : "Restore"}
-                </button>
-                {confirmRestore === b.filename && (
-                  <button className="btn-ghost" style={{ fontSize: 10, padding: "2px 6px" }}
-                    onClick={() => setConfirmRestore(null)}>Cancel</button>
-                )}
-                <button className="btn-ghost"
-                  style={{ fontSize: 10, padding: "2px 6px", color: "var(--danger)" }}
-                  title="Delete this backup"
-                  onClick={() => handleDelete(b.filename)}
-                  disabled={busyBackup === b.filename}>✕</button>
-              </div>
-            ))
-          )}
-        </div>
-      )}
-    </div>
+    <span style={{ fontSize: 10, fontWeight: 600, padding: "2px 7px", borderRadius: 10,
+      background: s.bg, color: s.color }}>
+      {s.text}
+    </span>
   );
 }
 
-// ── Ridership / OTP boardings files ────────────────────────────────────────────
-
-const BOARDINGS_FILE_CONFIGS = [
-  { key: "boardings_by_month",       label: "boardings_by_month.csv",       hint: "month, total_in, total_out, unique_days, avg_daily_in, avg_daily_out" },
-  { key: "boardings_by_route_month", label: "boardings_by_route_month.csv", hint: "route, month, total_in, total_out, unique_days, avg_daily_in, avg_daily_out" },
-  { key: "boardings_by_route",       label: "boardings_by_route.csv",       hint: "route, total_in, total_out, unique_days, avg_daily_in, avg_daily_out" },
-  { key: "boardings_by_route_stop",  label: "boardings_by_route_stop.csv",  hint: "route, address, total_in, total_out, avg_daily_in, avg_daily_out, days" },
-  { key: "boardings_by_stop",        label: "boardings_by_stop.csv",        hint: "route, stop_id, address, total_in, total_out, avg_daily_in, avg_daily_out, days" },
-  { key: "boardings_by_dow",         label: "boardings_by_dow.csv",         hint: "day_num, day_name, avg_in, avg_out, total_in, total_out" },
-  { key: "boardings_by_route_dow",   label: "boardings_by_route_dow.csv",   hint: "route, day_num, day_name, avg_in, avg_out, total_in, total_out" },
-];
-
-function BoardingsFileRow({ fileKey, label, hint }) {
-  const [info, setInfo]           = useState(null);
-  const [status, setStatus]       = useState(null);
-  const [preview, setPreview]     = useState(null);
-  const [pendingFile, setPending] = useState(null);
-  const [mode, setMode]           = useState("merge");
-
-  useEffect(() => {
-    getBoardingsInfo(fileKey).then(setInfo).catch(() => setInfo({ exists: false, rows: 0 }));
-  }, [fileKey]);
-
-  const handleFile = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    e.target.value = "";
-    setPending(file);
-    setStatus("previewing");
-    try {
-      const prev = await previewBoardingsUpload(fileKey, file);
-      setPreview(prev);
-      setStatus("preview_ready");
-    } catch (err) {
-      setStatus(`error: ${err?.response?.data?.detail || err.message}`);
-    }
-  };
-
-  const confirmImport = async () => {
-    if (!pendingFile) return;
-    setStatus("merging");
-    try {
-      const result = await uploadBoardings(fileKey, pendingFile, mode);
-      setStatus("done");
-      setPreview(null);
-      setPending(null);
-      setInfo(i => ({ ...i, rows: result.total_rows }));
-      setTimeout(() => setStatus(null), 4000);
-    } catch (err) {
-      setStatus(`error: ${err?.response?.data?.detail || err.message}`);
-    }
-  };
-
-  const cancelPreview = () => { setPreview(null); setPending(null); setStatus(null); };
-
-  const isDone  = status === "done";
-  const isError = status?.startsWith("error:");
-  const isBusy  = status === "previewing" || status === "merging";
+// ── Single file preview row ────────────────────────────────────────────────────
+function FilePreviewRow({ file, onRemove }) {
+  const isUnknown  = file.status === "unknown";
+  const isError    = file.status === "error";
+  const isImported = file.status === "imported";
 
   return (
-    <div style={{ borderBottom: "1px solid var(--border)", paddingBottom: 10, marginBottom: 2 }}>
-      <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
-        <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 12, fontWeight: 600 }}>{label}</div>
-          <div style={{ fontSize: 10, color: "var(--muted)", marginTop: 1 }}>{hint}</div>
-          {info && (
-            <div style={{ fontSize: 10, color: "var(--muted)", marginTop: 2 }}>
-              {info.exists
-                ? <>
-                    <span style={{ color: "var(--text)" }}>{info.rows.toLocaleString()} rows</span>
-                    {info.date_range && (
-                      <> · <span style={{ color: "var(--accent)" }}>{info.date_range.min} → {info.date_range.max}</span></>
-                    )}
-                  </>
-                : <span style={{ color: "var(--danger)" }}>File not found</span>
-              }
-            </div>
-          )}
+    <div style={{
+      display: "grid", gridTemplateColumns: "1fr auto", gap: 8, alignItems: "start",
+      padding: "10px 12px",
+      borderBottom: "1px solid var(--border)",
+      background: isError ? "rgba(231,76,60,0.04)" : isUnknown ? "rgba(241,196,15,0.04)" : "transparent",
+    }}>
+      <div>
+        {/* File name + badge */}
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3 }}>
+          <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text)" }}>{file.filename}</span>
+          <StatusBadge status={file.status} />
         </div>
-        <div style={{ display: "flex", gap: 4, alignItems: "center", flexShrink: 0 }}>
-          <button
-            className="btn-ghost"
-            title="Download current file"
-            onClick={() => downloadBoardingsCsv(fileKey, label)}
-            style={{ fontSize: 11, padding: "3px 8px" }}
-          >↓</button>
-          <select value={mode} onChange={e => setMode(e.target.value)}
-            style={{ fontSize: 10, padding: "3px 4px", borderRadius: 4,
-              border: "1px solid var(--border)", background: "var(--surface2)", color: "var(--text)" }}>
-            <option value="merge">Merge</option>
-            <option value="replace">Replace</option>
-          </select>
-          <label style={{
-            background: "var(--surface2)",
-            border: `1px solid ${isDone ? "var(--success)" : isError ? "var(--danger)" : "var(--border)"}`,
-            borderRadius: "var(--radius)", padding: "3px 8px", fontSize: 11,
-            cursor: isBusy ? "default" : "pointer", opacity: isBusy ? 0.6 : 1,
-          }}>
-            {isBusy ? (status === "previewing" ? "Reading…" : "Saving…") : isDone ? "✓ Done" : "↑ Upload"}
-            <input type="file" accept=".csv" style={{ display: "none" }} onChange={handleFile} disabled={isBusy} />
-          </label>
-        </div>
-      </div>
 
-      {isError && (
-        <div style={{ marginTop: 6, fontSize: 11, color: "var(--danger)",
-          background: "rgba(231,76,60,0.08)", borderRadius: 4, padding: "4px 8px" }}>
-          {status.replace("error: ", "")}
+        {/* Detected type */}
+        <div style={{ fontSize: 11, color: isUnknown || isError ? "var(--danger)" : "var(--accent)", marginBottom: 2 }}>
+          {file.label}
         </div>
-      )}
 
-      {status === "preview_ready" && preview && (
-        <div style={{ marginTop: 8, background: "var(--bg)", border: "1px solid var(--border)",
-          borderRadius: "var(--radius)", padding: "10px 12px", fontSize: 11 }}>
-          <div style={{ fontWeight: 600, marginBottom: 6 }}>Import Preview</div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "4px 16px", marginBottom: 8 }}>
-            <div style={{ color: "var(--muted)" }}>Existing rows:</div>
-            <div>{preview.existing_rows.toLocaleString()}</div>
-            <div style={{ color: "var(--muted)" }}>Incoming rows:</div>
-            <div>{preview.incoming_rows.toLocaleString()}</div>
-            <div style={{ color: "var(--muted)" }}>New rows to add:</div>
-            <div style={{ color: "var(--success)", fontWeight: 600 }}>+{preview.rows_to_add.toLocaleString()}</div>
-            <div style={{ color: "var(--muted)" }}>Rows to update:</div>
-            <div style={{ color: "var(--accent)", fontWeight: 600 }}>{preview.rows_to_update.toLocaleString()} updated</div>
-            {preview.new_date_range && (
-              <>
-                <div style={{ color: "var(--muted)" }}>New data range:</div>
-                <div style={{ color: "var(--accent)" }}>{preview.new_date_range.min} → {preview.new_date_range.max}</div>
-              </>
+        {/* Stats row */}
+        {!isError && !isUnknown && (
+          <div style={{ fontSize: 10, color: "var(--muted)", display: "flex", gap: 12, flexWrap: "wrap" }}>
+            {file.incoming_rows != null && (
+              <span>{file.incoming_rows.toLocaleString()} rows incoming</span>
+            )}
+            {file.existing_rows != null && (
+              <span>{file.existing_rows.toLocaleString()} existing</span>
+            )}
+            {file.rows_to_add != null && (
+              <span style={{ color: "var(--success)", fontWeight: 600 }}>+{file.rows_to_add} new</span>
+            )}
+            {file.rows_to_update != null && file.rows_to_update > 0 && (
+              <span style={{ color: "var(--accent)" }}>{file.rows_to_update} updated</span>
+            )}
+            {file.date_range && (
+              <span style={{ color: "var(--accent)" }}>{file.date_range.min} → {file.date_range.max}</span>
+            )}
+            {/* Post-import totals */}
+            {isImported && file.total_rows != null && (
+              <span style={{ color: "var(--success)" }}>Total: {file.total_rows.toLocaleString()} rows</span>
             )}
           </div>
-          <div style={{ display: "flex", gap: 8 }}>
-            <button className="btn-primary" style={{ fontSize: 11, padding: "5px 14px" }} onClick={confirmImport}>
-              Confirm Import
-            </button>
-            <button className="btn-ghost" style={{ fontSize: 11, padding: "5px 14px" }} onClick={cancelPreview}>
-              Cancel
-            </button>
+        )}
+
+        {/* Error message */}
+        {isError && (
+          <div style={{ fontSize: 10, color: "var(--danger)", marginTop: 2 }}>{file.error}</div>
+        )}
+        {isUnknown && (
+          <div style={{ fontSize: 10, color: "var(--muted)", marginTop: 2 }}>
+            Columns: {file.columns?.slice(0, 6).join(", ")}{file.columns?.length > 6 ? "…" : ""}
           </div>
-        </div>
+        )}
+      </div>
+
+      {/* Remove button (only before import) */}
+      {onRemove && (
+        <button className="btn-ghost" onClick={onRemove}
+          style={{ fontSize: 11, padding: "2px 7px", color: "var(--muted)", marginTop: 2 }}>✕</button>
       )}
     </div>
   );
 }
 
-function OtpExcelRow() {
-  const [info, setInfo]           = useState(null);
-  const [status, setStatus]       = useState(null);
-  const [preview, setPreview]     = useState(null);
-  const [pendingFile, setPending] = useState(null);
-  const [mode, setMode]           = useState("replace");
+// ── Drop zone ──────────────────────────────────────────────────────────────────
+function DropZone({ onFiles, disabled }) {
+  const [dragging, setDragging] = useState(false);
+  const inputRef = useRef();
 
-  useEffect(() => {
-    getBoardingsInfo("otp").then(setInfo).catch(() => setInfo({ exists: false, rows: 0 }));
-  }, []);
+  const handleDrop = useCallback((e) => {
+    e.preventDefault();
+    setDragging(false);
+    if (disabled) return;
+    const files = Array.from(e.dataTransfer.files).filter(
+      f => f.name.endsWith(".csv") || f.name.endsWith(".xlsx") || f.name.endsWith(".xls")
+    );
+    if (files.length) onFiles(files);
+  }, [onFiles, disabled]);
 
-  const handleFile = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
+  const handleDragOver = (e) => { e.preventDefault(); if (!disabled) setDragging(true); };
+  const handleDragLeave = () => setDragging(false);
+  const handleInput = (e) => {
+    const files = Array.from(e.target.files);
     e.target.value = "";
-    setPending(file);
-    setPreview({ filename: file.name });
-    setStatus("preview_ready");
+    if (files.length) onFiles(files);
   };
-
-  const confirmImport = async () => {
-    if (!pendingFile) return;
-    setStatus("uploading");
-    try {
-      const result = await uploadOtpExcel(pendingFile, mode);
-      setStatus("done");
-      setPreview(null);
-      setPending(null);
-      setInfo(i => ({ ...i, rows: result.total_rows, exists: true }));
-      setTimeout(() => setStatus(null), 4000);
-    } catch (err) {
-      setStatus(`error: ${err?.response?.data?.detail || err.message}`);
-    }
-  };
-
-  const cancelPreview = () => { setPreview(null); setPending(null); setStatus(null); };
-
-  const isDone  = status === "done";
-  const isError = status?.startsWith("error:");
-  const isBusy  = status === "uploading";
 
   return (
-    <div style={{ paddingBottom: 10 }}>
-      <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
-        <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 12, fontWeight: 600 }}>
-            otp.csv
-            <span style={{ fontSize: 10, fontWeight: 400, color: "var(--accent)", marginLeft: 6 }}>
-              Excel import
-            </span>
-          </div>
-          <div style={{ fontSize: 10, color: "var(--muted)", marginTop: 1 }}>
-            Route_OTP_By_Route_as_tables.xlsx — reads COMBINED sheet automatically
-          </div>
-          {info && (
-            <div style={{ fontSize: 10, marginTop: 2 }}>
-              {info.exists
-                ? <span style={{ color: "var(--text)" }}>{info.rows.toLocaleString()} stop-level OTP records</span>
-                : <span style={{ color: "var(--danger)" }}>No OTP data loaded</span>
-              }
-            </div>
-          )}
-        </div>
-        <div style={{ display: "flex", gap: 4, alignItems: "center", flexShrink: 0 }}>
-          <button
-            className="btn-ghost"
-            title="Download current otp.csv"
-            onClick={() => downloadBoardingsCsv("otp", "otp.csv")}
-            style={{ fontSize: 11, padding: "3px 8px" }}
-          >↓</button>
-          <select value={mode} onChange={e => setMode(e.target.value)}
-            style={{ fontSize: 10, padding: "3px 4px", borderRadius: 4,
-              border: "1px solid var(--border)", background: "var(--surface2)", color: "var(--text)" }}>
-            <option value="replace">Replace all</option>
-            <option value="merge">Merge</option>
-          </select>
-          <label style={{
-            background: "var(--surface2)",
-            border: `1px solid ${isDone ? "var(--success)" : isError ? "var(--danger)" : "var(--border)"}`,
-            borderRadius: "var(--radius)", padding: "3px 8px", fontSize: 11,
-            cursor: isBusy ? "default" : "pointer", opacity: isBusy ? 0.6 : 1,
-          }}>
-            {isBusy ? "Uploading…" : isDone ? "✓ Done" : "↑ .xlsx"}
-            <input type="file" accept=".xlsx,.xls" style={{ display: "none" }} onChange={handleFile} disabled={isBusy} />
-          </label>
-        </div>
+    <div
+      onDrop={handleDrop}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onClick={() => !disabled && inputRef.current?.click()}
+      style={{
+        border: `2px dashed ${dragging ? "var(--accent)" : "var(--border)"}`,
+        borderRadius: 10,
+        padding: "36px 24px",
+        textAlign: "center",
+        cursor: disabled ? "default" : "pointer",
+        background: dragging ? "rgba(52,152,219,0.06)" : "var(--surface2)",
+        transition: "border-color 0.15s, background 0.15s",
+        userSelect: "none",
+      }}
+    >
+      <div style={{ fontSize: 32, marginBottom: 8 }}>📂</div>
+      <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text)", marginBottom: 4 }}>
+        Drop your export files here
       </div>
+      <div style={{ fontSize: 12, color: "var(--muted)" }}>
+        CSV and .xlsx files · Multiple files at once · Auto-identified by column headers
+      </div>
+      <div style={{ marginTop: 14 }}>
+        <span style={{ fontSize: 12, color: "var(--accent)", fontWeight: 600 }}>
+          or click to browse
+        </span>
+      </div>
+      <input ref={inputRef} type="file" multiple accept=".csv,.xlsx,.xls"
+        style={{ display: "none" }} onChange={handleInput} />
+    </div>
+  );
+}
 
-      {isError && (
-        <div style={{ marginTop: 6, fontSize: 11, color: "var(--danger)",
-          background: "rgba(231,76,60,0.08)", borderRadius: 4, padding: "4px 8px" }}>
-          {status.replace("error: ", "")}
-        </div>
-      )}
+// ── Downloads section ──────────────────────────────────────────────────────────
+const DOWNLOAD_FILES = [
+  { type: "stops",                 label: "stops.csv",                  isBoardings: false },
+  { type: "routes",                label: "routes.csv",                 isBoardings: false },
+  { type: "ridership",             label: "ridership.csv",              isBoardings: false },
+  { type: "employment_hubs",       label: "employment_hubs.csv",        isBoardings: false },
+  { type: "boardings_by_month",    label: "boardings_by_month.csv",     isBoardings: true },
+  { type: "boardings_by_route_month", label: "boardings_by_route_month.csv", isBoardings: true },
+  { type: "boardings_by_route",    label: "boardings_by_route.csv",     isBoardings: true },
+  { type: "boardings_by_route_stop", label: "boardings_by_route_stop.csv", isBoardings: true },
+  { type: "boardings_by_stop",     label: "boardings_by_stop.csv",      isBoardings: true },
+  { type: "boardings_by_dow",      label: "boardings_by_dow.csv",       isBoardings: true },
+  { type: "boardings_by_route_dow", label: "boardings_by_route_dow.csv", isBoardings: true },
+  { type: "otp",                   label: "otp.csv",                    isBoardings: true },
+];
 
-      {status === "preview_ready" && preview && (
-        <div style={{ marginTop: 8, background: "var(--bg)", border: "1px solid var(--border)",
-          borderRadius: "var(--radius)", padding: "10px 12px", fontSize: 11 }}>
-          <div style={{ fontWeight: 600, marginBottom: 4 }}>Ready to import</div>
-          <div style={{ color: "var(--muted)", marginBottom: 8 }}>
-            File: <span style={{ color: "var(--text)" }}>{preview.filename}</span>
-            <br />Mode: <span style={{ color: "var(--accent)" }}>{mode === "replace" ? "Replace all OTP data" : "Merge with existing"}</span>
-            <br />Reads the <strong>COMBINED</strong> sheet — maps all stop records to otp.csv format.
-          </div>
-          <div style={{ display: "flex", gap: 8 }}>
-            <button className="btn-primary" style={{ fontSize: 11, padding: "5px 14px" }} onClick={confirmImport}>
-              Confirm Import
+function DownloadsSection() {
+  const [open, setOpen] = useState(false);
+  return (
+    <div>
+      <button className="btn-ghost" style={{ fontSize: 12, padding: "6px 12px", width: "100%" }}
+        onClick={() => setOpen(v => !v)}>
+        {open ? "▲" : "▼"} Download current data files
+      </button>
+      {open && (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 10 }}>
+          {DOWNLOAD_FILES.map(({ type, label, isBoardings }) => (
+            <button key={type} className="btn-ghost"
+              style={{ fontSize: 11, padding: "4px 10px" }}
+              onClick={() => isBoardings ? downloadBoardingsCsv(type, label) : downloadCurrentCsv(type)}>
+              ↓ {label}
             </button>
-            <button className="btn-ghost" style={{ fontSize: 11, padding: "5px 14px" }} onClick={cancelPreview}>
-              Cancel
-            </button>
-          </div>
+          ))}
         </div>
       )}
     </div>
@@ -440,51 +187,182 @@ function OtpExcelRow() {
 }
 
 // ── Main panel ─────────────────────────────────────────────────────────────────
-
 export default function DataImportPanel({ onUpload }) {
+  const [stage, setStage]   = useState("idle");   // idle | previewing | ready | importing | done
+  const [files, setFiles]   = useState([]);        // preview results from backend
+  const [mode, setMode]     = useState("merge");
+  const [rawFiles, setRaw]  = useState([]);        // original File objects
+
+  const handleFiles = async (fileList) => {
+    setStage("previewing");
+    setRaw(fileList);
+    try {
+      const result = await smartImportPreview(fileList);
+      setFiles(result.files);
+      setStage("ready");
+    } catch (err) {
+      setFiles([{ filename: "Preview failed", status: "error",
+        label: err?.response?.data?.detail || err.message, error: err.message }]);
+      setStage("ready");
+    }
+  };
+
+  const removeFile = (idx) => {
+    const newFiles  = files.filter((_, i) => i !== idx);
+    const newRaw    = rawFiles.filter((_, i) => i !== idx);
+    setFiles(newFiles);
+    setRaw(newRaw);
+    if (newFiles.length === 0) setStage("idle");
+  };
+
+  const handleImport = async () => {
+    const readyRaw = rawFiles.filter((_, i) => files[i]?.status !== "unknown" && files[i]?.status !== "error");
+    if (!readyRaw.length) return;
+    setStage("importing");
+    try {
+      const result = await smartImport(readyRaw, mode);
+      setFiles(result.files);
+      setStage("done");
+      // Re-fetch app data so map/metrics/ridership update live
+      if (onUpload) onUpload();
+    } catch (err) {
+      setFiles(prev => prev.map(f => ({ ...f, status: "error",
+        error: err?.response?.data?.detail || err.message })));
+      setStage("done");
+    }
+  };
+
+  const reset = () => { setStage("idle"); setFiles([]); setRaw([]); };
+
+  const readyCount  = files.filter(f => f.status === "ready").length;
+  const importedCount = files.filter(f => f.status === "imported").length;
+  const skippedCount  = files.filter(f => f.status === "skipped" || f.status === "unknown").length;
+  const errorCount    = files.filter(f => f.status === "error").length;
+
   return (
     <div style={{
-      display: "flex", flexDirection: "column", gap: 24,
-      maxWidth: 720, margin: "0 auto", padding: "24px 20px", overflowY: "auto", height: "100%",
+      display: "flex", flexDirection: "column", gap: 20,
+      maxWidth: 680, margin: "0 auto", padding: "28px 20px",
+      overflowY: "auto", height: "100%",
     }}>
 
       {/* Header */}
       <div>
         <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700 }}>Data Import</h2>
         <p style={{ margin: "6px 0 0", fontSize: 13, color: "var(--muted)" }}>
-          Upload new data exports to keep the simulation current. Use <strong>Merge</strong> on ridership files
-          to append new months without losing history. Network files (stops, routes) always replace.
+          Drop all your export files at once. The system auto-identifies each file by its columns
+          and updates the map, metrics, and ridership charts instantly.
         </p>
       </div>
 
-      {/* Network Files */}
-      <div>
-        <div className="panel-title" style={{ marginBottom: 8 }}>Network Files</div>
-        <p style={{ fontSize: 12, color: "var(--muted)", marginBottom: 10 }}>
-          Replacing these files updates the map, route editor, and simulation immediately.
-          A backup is created automatically before each upload.
-        </p>
-        <div className="card" style={{ display: "flex", flexDirection: "column", gap: 0 }}>
-          {NETWORK_FILES.map(({ key, label, hint }) => (
-            <DataFileManager key={key} fileType={key} label={label} hint={hint} onUpload={onUpload} />
-          ))}
-        </div>
+      {/* Mode toggle */}
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <span style={{ fontSize: 12, color: "var(--muted)" }}>Import mode:</span>
+        {["merge", "replace"].map(m => (
+          <button key={m}
+            className={mode === m ? "btn-primary" : "btn-ghost"}
+            style={{ fontSize: 11, padding: "4px 12px" }}
+            onClick={() => setMode(m)}>
+            {m === "merge" ? "Merge — keep history" : "Replace — overwrite"}
+          </button>
+        ))}
+        <span style={{ fontSize: 10, color: "var(--muted)", flex: 1 }}>
+          {mode === "merge" ? "New rows are added, existing rows updated" : "Existing data is fully replaced"}
+        </span>
       </div>
 
-      {/* Ridership / Boardings Files */}
-      <div>
-        <div className="panel-title" style={{ marginBottom: 8 }}>Ridership &amp; Boardings Data</div>
-        <p style={{ fontSize: 12, color: "var(--muted)", marginBottom: 10 }}>
-          These files power the Ridership tab charts. Upload the latest export from the transit agency
-          system. <strong>Merge mode</strong> adds new rows (e.g. a new month) while keeping all existing history.
-          The current row count and date range are shown for each file.
-        </p>
-        <div className="card" style={{ display: "flex", flexDirection: "column", gap: 0 }}>
-          {BOARDINGS_FILE_CONFIGS.map(({ key, label, hint }) => (
-            <BoardingsFileRow key={key} fileKey={key} label={label} hint={hint} />
-          ))}
-          <OtpExcelRow />
+      {/* Drop zone (shown when idle) */}
+      {stage === "idle" && (
+        <DropZone onFiles={handleFiles} disabled={false} />
+      )}
+
+      {/* Previewing spinner */}
+      {stage === "previewing" && (
+        <div style={{ textAlign: "center", padding: "40px 0", color: "var(--muted)", fontSize: 13 }}>
+          <div style={{ fontSize: 28, marginBottom: 10 }}>⏳</div>
+          Identifying files…
         </div>
+      )}
+
+      {/* File list (ready or done) */}
+      {(stage === "ready" || stage === "importing" || stage === "done") && (
+        <div>
+          {/* Summary bar */}
+          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10, flexWrap: "wrap" }}>
+            <span style={{ fontSize: 13, fontWeight: 600 }}>
+              {stage === "done" ? "Import complete" : `${files.length} file${files.length !== 1 ? "s" : ""} detected`}
+            </span>
+            {stage === "done" && (
+              <>
+                {importedCount > 0 && <span style={{ fontSize: 11, color: "var(--success)" }}>✓ {importedCount} imported</span>}
+                {skippedCount  > 0 && <span style={{ fontSize: 11, color: "#f1c40f" }}>⚠ {skippedCount} skipped</span>}
+                {errorCount    > 0 && <span style={{ fontSize: 11, color: "var(--danger)" }}>✕ {errorCount} errors</span>}
+              </>
+            )}
+            {stage === "ready" && (
+              <>
+                {readyCount > 0  && <span style={{ fontSize: 11, color: "var(--success)" }}>{readyCount} ready</span>}
+                {skippedCount > 0 && <span style={{ fontSize: 11, color: "#f1c40f" }}>{skippedCount} unrecognized</span>}
+                {errorCount > 0  && <span style={{ fontSize: 11, color: "var(--danger)" }}>{errorCount} errors</span>}
+              </>
+            )}
+          </div>
+
+          {/* File rows */}
+          <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+            {files.map((f, i) => (
+              <FilePreviewRow
+                key={i}
+                file={f}
+                onRemove={stage === "ready" ? () => removeFile(i) : null}
+              />
+            ))}
+          </div>
+
+          {/* Actions */}
+          <div style={{ display: "flex", gap: 10, marginTop: 14, alignItems: "center" }}>
+            {stage === "ready" && (
+              <>
+                <button
+                  className="btn-primary"
+                  style={{ fontSize: 13, padding: "8px 24px", opacity: readyCount === 0 ? 0.5 : 1 }}
+                  disabled={readyCount === 0}
+                  onClick={handleImport}
+                >
+                  Import {readyCount} file{readyCount !== 1 ? "s" : ""}
+                </button>
+                <button className="btn-ghost" style={{ fontSize: 12, padding: "8px 16px" }}
+                  onClick={() => { reset(); }}>
+                  Cancel
+                </button>
+                <label className="btn-ghost" style={{ fontSize: 12, padding: "8px 16px", cursor: "pointer" }}>
+                  + Add more files
+                  <input type="file" multiple accept=".csv,.xlsx,.xls" style={{ display: "none" }}
+                    onChange={e => { handleFiles(Array.from(e.target.files)); e.target.value = ""; }} />
+                </label>
+              </>
+            )}
+            {stage === "importing" && (
+              <span style={{ fontSize: 13, color: "var(--muted)" }}>⏳ Importing…</span>
+            )}
+            {stage === "done" && (
+              <>
+                <button className="btn-primary" style={{ fontSize: 13, padding: "8px 24px" }}
+                  onClick={reset}>
+                  Import more files
+                </button>
+                <span style={{ fontSize: 12, color: "var(--muted)" }}>
+                  Map, Metrics &amp; Ridership updated automatically
+                </span>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Downloads */}
+      <div style={{ borderTop: "1px solid var(--border)", paddingTop: 16 }}>
+        <DownloadsSection />
       </div>
 
     </div>

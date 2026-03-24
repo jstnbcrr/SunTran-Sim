@@ -288,7 +288,7 @@ export default function App() {
             byRouteStop={boardingsRouteStop}
           />
         )}
-        {activeTab === "Import" && <DataImportPanel onUpload={handleUpload} />}
+        {activeTab === "Import" && <DataImportPanel onUpload={fetchAll} />}
         {activeTab === "Instructions" && <InstructionsPanel />}
       </main>
     </div>
