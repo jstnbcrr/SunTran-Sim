@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { MapContainer, TileLayer, CircleMarker, Polyline, useMap, useMapEvents } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
-import { runSimulation, listBackups, restoreBackup, deleteBackup, downloadBackup, downloadCurrentCsv } from "../api/client";
+import { runSimulation } from "../api/client";
 
 const COLORS = [
   "#e74c3c", "#3498db", "#2ecc71", "#f39c12", "#9b59b6",
@@ -325,200 +325,6 @@ function AddStopForm({ onAdd }) {
   );
 }
 
-const UPLOAD_TYPES = [
-  { key: "stops",           label: "stops.csv",           hint: "stop_id, stop_name, latitude, longitude" },
-  { key: "routes",          label: "routes.csv",          hint: "route_id, route_name, color, stop_ids (pipe-separated)" },
-  { key: "ridership",       label: "ridership.csv",       hint: "route_id, stop_id, hour, hourly_boardings, hourly_alightings" },
-  { key: "employment_hubs", label: "employment_hubs.csv", hint: "hub_name, latitude, longitude, estimated_workers" },
-];
-
-// ── Per-file data manager (upload + download + backup history) ────────────────
-function DataFileManager({ fileType, label, hint, onUpload }) {
-  const [uploadStatus, setUploadStatus] = useState(null); // null | "loading" | "ok" | "error: ..."
-  const [backups, setBackups]           = useState(null);  // null = not loaded
-  const [expanded, setExpanded]         = useState(false);
-  const [confirmRestore, setConfirmRestore] = useState(null);
-  const [busyBackup, setBusyBackup]     = useState(null);
-
-  const loadBackups = async () => {
-    try {
-      const data = await listBackups(fileType);
-      setBackups(data.backups || []);
-    } catch {
-      setBackups([]);
-    }
-  };
-
-  const toggleExpanded = () => {
-    if (!expanded && backups === null) loadBackups();
-    setExpanded(v => !v);
-  };
-
-  const handleUpload = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    e.target.value = "";
-    setUploadStatus("loading");
-    const result = await onUpload(fileType, file);
-    if (result?.success === false) {
-      setUploadStatus(`error: ${result.error}`);
-    } else {
-      setUploadStatus("ok");
-      setTimeout(() => setUploadStatus(null), 3000);
-      if (expanded) loadBackups(); // refresh backup list
-    }
-  };
-
-  const handleRestore = async (filename) => {
-    if (confirmRestore !== filename) { setConfirmRestore(filename); return; }
-    setBusyBackup(filename);
-    try {
-      await restoreBackup(fileType, filename);
-      setConfirmRestore(null);
-      await loadBackups();
-    } finally {
-      setBusyBackup(null);
-    }
-  };
-
-  const handleDelete = async (filename) => {
-    setBusyBackup(filename);
-    try {
-      await deleteBackup(fileType, filename);
-      setBackups(b => b.filter(x => x.filename !== filename));
-    } finally {
-      setBusyBackup(null);
-    }
-  };
-
-  const formatSize = (bytes) => bytes < 1024 ? `${bytes}B` : `${(bytes/1024).toFixed(1)}KB`;
-  const formatDate = (ts) => new Date(ts * 1000).toLocaleString(undefined, {
-    month: "short", day: "numeric", hour: "2-digit", minute: "2-digit",
-  });
-
-  const isLoading = uploadStatus === "loading";
-  const isOk      = uploadStatus === "ok";
-  const isError   = uploadStatus?.startsWith("error:");
-
-  return (
-    <div style={{ borderBottom: "1px solid var(--border)", paddingBottom: 10, marginBottom: 2 }}>
-      {/* Header row */}
-      <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
-        <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 12, fontWeight: 600 }}>{label}</div>
-          <div style={{ fontSize: 10, color: "var(--muted)", marginTop: 1 }}>{hint}</div>
-        </div>
-
-        {/* Action buttons */}
-        <div style={{ display: "flex", gap: 4, flexShrink: 0, alignItems: "center" }}>
-          {/* Download current */}
-          <button
-            className="btn-ghost"
-            title="Download current file"
-            onClick={() => downloadCurrentCsv(fileType)}
-            style={{ fontSize: 11, padding: "3px 8px" }}
-          >
-            ↓
-          </button>
-
-          {/* Upload new */}
-          <label style={{
-            background: "var(--surface2)",
-            border: `1px solid ${isOk ? "var(--success)" : isError ? "var(--danger)" : "var(--border)"}`,
-            borderRadius: "var(--radius)", padding: "3px 8px",
-            fontSize: 11, cursor: isLoading ? "default" : "pointer",
-            color: isOk ? "var(--success)" : isError ? "var(--danger)" : "var(--text)",
-            fontWeight: 600, whiteSpace: "nowrap",
-          }}>
-            {isLoading ? "Saving…" : isOk ? "✓ Saved" : "↑ Upload"}
-            <input type="file" accept=".csv" hidden disabled={isLoading} onChange={handleUpload} />
-          </label>
-
-          {/* Toggle backup history */}
-          <button
-            className="btn-ghost"
-            title="Backup history"
-            onClick={toggleExpanded}
-            style={{ fontSize: 11, padding: "3px 8px", color: expanded ? "var(--accent)" : "var(--muted)" }}
-          >
-            {expanded ? "▲" : "▼"}
-          </button>
-        </div>
-      </div>
-
-      {/* Upload error */}
-      {isError && (
-        <div style={{
-          marginTop: 6, fontSize: 11, color: "var(--danger)",
-          background: "rgba(231,76,60,0.08)", borderRadius: 4, padding: "4px 8px",
-        }}>
-          {uploadStatus.replace("error: ", "")}
-        </div>
-      )}
-
-      {/* Backup history panel */}
-      {expanded && (
-        <div style={{
-          marginTop: 8, background: "var(--bg)", borderRadius: "var(--radius)",
-          border: "1px solid var(--border)", overflow: "hidden",
-        }}>
-          {backups === null ? (
-            <div style={{ padding: "8px 10px", fontSize: 11, color: "var(--muted)" }}>Loading…</div>
-          ) : backups.length === 0 ? (
-            <div style={{ padding: "8px 10px", fontSize: 11, color: "var(--muted)" }}>
-              No backups yet. Backups are created automatically before each upload.
-            </div>
-          ) : (
-            backups.map(b => (
-              <div key={b.filename} style={{
-                display: "flex", alignItems: "center", gap: 6,
-                padding: "6px 10px", borderBottom: "1px solid var(--border)",
-                fontSize: 11,
-              }}>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ color: "var(--text)", fontFamily: "monospace", fontSize: 10,
-                    overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {formatDate(b.created_at)}
-                  </div>
-                  <div style={{ color: "var(--muted)", fontSize: 10 }}>{formatSize(b.size_bytes)}</div>
-                </div>
-                <button
-                  className="btn-ghost"
-                  style={{ fontSize: 10, padding: "2px 6px" }}
-                  title="Download this backup"
-                  onClick={() => downloadBackup(fileType, b.filename)}
-                  disabled={busyBackup === b.filename}
-                >↓</button>
-                <button
-                  className={confirmRestore === b.filename ? "btn-primary" : "btn-ghost"}
-                  style={{ fontSize: 10, padding: "2px 6px", whiteSpace: "nowrap" }}
-                  onClick={() => handleRestore(b.filename)}
-                  disabled={busyBackup === b.filename}
-                >
-                  {confirmRestore === b.filename ? "Confirm?" : "Restore"}
-                </button>
-                {confirmRestore === b.filename && (
-                  <button
-                    className="btn-ghost"
-                    style={{ fontSize: 10, padding: "2px 6px" }}
-                    onClick={() => setConfirmRestore(null)}
-                  >Cancel</button>
-                )}
-                <button
-                  className="btn-ghost"
-                  style={{ fontSize: 10, padding: "2px 6px", color: "var(--danger)" }}
-                  title="Delete this backup"
-                  onClick={() => handleDelete(b.filename)}
-                  disabled={busyBackup === b.filename}
-                >✕</button>
-              </div>
-            ))
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
 
 // ── Network management panel ──────────────────────────────────────────────────
 function NetworkPanel({ stops, routes, onAdd, onUpdate, onDelete, onUpload }) {
@@ -528,18 +334,6 @@ function NetworkPanel({ stops, routes, onAdd, onUpdate, onDelete, onUpload }) {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14, height: "100%", overflowY: "auto" }}>
-
-      {/* CSV Upload / Data Management */}
-      <div>
-        <div className="panel-title">Data Files</div>
-        <div className="card" style={{ display: "flex", flexDirection: "column", gap: 0 }}>
-          {UPLOAD_TYPES.map(({ key, label, hint }) => (
-            <DataFileManager key={key} fileType={key} label={label} hint={hint} onUpload={onUpload} />
-          ))}
-        </div>
-      </div>
-
-      <hr className="divider" />
 
       {/* Route CRUD */}
       {mode === "list" && (
@@ -685,6 +479,7 @@ function ScenarioPanel({ stops, routes, onSimulationComplete, onSimulateRoute, o
   const [params, setParams] = useState({
     walking_radius_miles: 0.25, max_travel_minutes: 30,
     average_speed_mph: 15, dwell_time_minutes: 0.5, transfer_penalty_minutes: 5,
+    highway_speed_mph: 55, highway_threshold_miles: 1.0,
   });
   const [running, setRunning]           = useState(false);
   const [err, setErr]                   = useState("");
@@ -703,7 +498,7 @@ function ScenarioPanel({ stops, routes, onSimulationComplete, onSimulateRoute, o
       setProposedRoutes(draft.proposedRoutes);
       setProposedStops(draft.proposedStops || []);
       setCustomStops(draft.customStops || []);
-      setParams(p => draft.params || p);
+      setParams(p => ({ ...p, ...(draft.params || {}) }));
       // Re-preview the last route so the map reflects the restored state
       const last = draft.proposedRoutes[draft.proposedRoutes.length - 1];
       const baseId = last.route_id.replace(/_MOD$/, "");
@@ -948,9 +743,11 @@ function ScenarioPanel({ stops, routes, onSimulationComplete, onSimulateRoute, o
           {[
             { key: "walking_radius_miles",    label: "Walking radius (mi)",   min: 0.1, max: 2,  step: 0.1  },
             { key: "max_travel_minutes",      label: "Max transit time (min)", min: 10,  max: 90, step: 5    },
-            { key: "average_speed_mph",       label: "Avg bus speed (mph)",    min: 8,   max: 30, step: 1    },
-            { key: "dwell_time_minutes",      label: "Dwell time / stop (min)",min: 0.25,max: 3,  step: 0.25 },
-            { key: "transfer_penalty_minutes",label: "Transfer penalty (min)", min: 0,   max: 15, step: 1    },
+            { key: "average_speed_mph",        label: "City street speed (mph)",     min: 8,   max: 35,  step: 1    },
+            { key: "highway_speed_mph",        label: "Highway speed (mph)",         min: 35,  max: 75,  step: 5    },
+            { key: "highway_threshold_miles",  label: "Highway threshold (mi)",      min: 0.25,max: 5,   step: 0.25 },
+            { key: "dwell_time_minutes",       label: "Dwell time / stop (min)",     min: 0.25,max: 3,   step: 0.25 },
+            { key: "transfer_penalty_minutes", label: "Transfer penalty (min)",      min: 0,   max: 15,  step: 1    },
           ].map(({ key, label, min, max, step }) => (
             <div key={key} className="form-row">
               <label style={{ display: "flex", justifyContent: "space-between" }}>
