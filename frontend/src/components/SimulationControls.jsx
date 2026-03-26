@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { MapContainer, TileLayer, CircleMarker, Polyline, useMap, useMapEvents } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
-import { runSimulation, listBackups, restoreBackup, deleteBackup, downloadBackup, downloadCurrentCsv } from "../api/client";
+import { runSimulation } from "../api/client";
 
 const COLORS = [
   "#e74c3c", "#3498db", "#2ecc71", "#f39c12", "#9b59b6",
@@ -325,200 +325,6 @@ function AddStopForm({ onAdd }) {
   );
 }
 
-const UPLOAD_TYPES = [
-  { key: "stops",           label: "stops.csv",           hint: "stop_id, stop_name, latitude, longitude" },
-  { key: "routes",          label: "routes.csv",          hint: "route_id, route_name, color, stop_ids (pipe-separated)" },
-  { key: "ridership",       label: "ridership.csv",       hint: "route_id, stop_id, hour, hourly_boardings, hourly_alightings" },
-  { key: "employment_hubs", label: "employment_hubs.csv", hint: "hub_name, latitude, longitude, estimated_workers" },
-];
-
-// ── Per-file data manager (upload + download + backup history) ────────────────
-function DataFileManager({ fileType, label, hint, onUpload }) {
-  const [uploadStatus, setUploadStatus] = useState(null); // null | "loading" | "ok" | "error: ..."
-  const [backups, setBackups]           = useState(null);  // null = not loaded
-  const [expanded, setExpanded]         = useState(false);
-  const [confirmRestore, setConfirmRestore] = useState(null);
-  const [busyBackup, setBusyBackup]     = useState(null);
-
-  const loadBackups = async () => {
-    try {
-      const data = await listBackups(fileType);
-      setBackups(data.backups || []);
-    } catch {
-      setBackups([]);
-    }
-  };
-
-  const toggleExpanded = () => {
-    if (!expanded && backups === null) loadBackups();
-    setExpanded(v => !v);
-  };
-
-  const handleUpload = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    e.target.value = "";
-    setUploadStatus("loading");
-    const result = await onUpload(fileType, file);
-    if (result?.success === false) {
-      setUploadStatus(`error: ${result.error}`);
-    } else {
-      setUploadStatus("ok");
-      setTimeout(() => setUploadStatus(null), 3000);
-      if (expanded) loadBackups(); // refresh backup list
-    }
-  };
-
-  const handleRestore = async (filename) => {
-    if (confirmRestore !== filename) { setConfirmRestore(filename); return; }
-    setBusyBackup(filename);
-    try {
-      await restoreBackup(fileType, filename);
-      setConfirmRestore(null);
-      await loadBackups();
-    } finally {
-      setBusyBackup(null);
-    }
-  };
-
-  const handleDelete = async (filename) => {
-    setBusyBackup(filename);
-    try {
-      await deleteBackup(fileType, filename);
-      setBackups(b => b.filter(x => x.filename !== filename));
-    } finally {
-      setBusyBackup(null);
-    }
-  };
-
-  const formatSize = (bytes) => bytes < 1024 ? `${bytes}B` : `${(bytes/1024).toFixed(1)}KB`;
-  const formatDate = (ts) => new Date(ts * 1000).toLocaleString(undefined, {
-    month: "short", day: "numeric", hour: "2-digit", minute: "2-digit",
-  });
-
-  const isLoading = uploadStatus === "loading";
-  const isOk      = uploadStatus === "ok";
-  const isError   = uploadStatus?.startsWith("error:");
-
-  return (
-    <div style={{ borderBottom: "1px solid var(--border)", paddingBottom: 10, marginBottom: 2 }}>
-      {/* Header row */}
-      <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
-        <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 12, fontWeight: 600 }}>{label}</div>
-          <div style={{ fontSize: 10, color: "var(--muted)", marginTop: 1 }}>{hint}</div>
-        </div>
-
-        {/* Action buttons */}
-        <div style={{ display: "flex", gap: 4, flexShrink: 0, alignItems: "center" }}>
-          {/* Download current */}
-          <button
-            className="btn-ghost"
-            title="Download current file"
-            onClick={() => downloadCurrentCsv(fileType)}
-            style={{ fontSize: 11, padding: "3px 8px" }}
-          >
-            ↓
-          </button>
-
-          {/* Upload new */}
-          <label style={{
-            background: "var(--surface2)",
-            border: `1px solid ${isOk ? "var(--success)" : isError ? "var(--danger)" : "var(--border)"}`,
-            borderRadius: "var(--radius)", padding: "3px 8px",
-            fontSize: 11, cursor: isLoading ? "default" : "pointer",
-            color: isOk ? "var(--success)" : isError ? "var(--danger)" : "var(--text)",
-            fontWeight: 600, whiteSpace: "nowrap",
-          }}>
-            {isLoading ? "Saving…" : isOk ? "✓ Saved" : "↑ Upload"}
-            <input type="file" accept=".csv" hidden disabled={isLoading} onChange={handleUpload} />
-          </label>
-
-          {/* Toggle backup history */}
-          <button
-            className="btn-ghost"
-            title="Backup history"
-            onClick={toggleExpanded}
-            style={{ fontSize: 11, padding: "3px 8px", color: expanded ? "var(--accent)" : "var(--muted)" }}
-          >
-            {expanded ? "▲" : "▼"}
-          </button>
-        </div>
-      </div>
-
-      {/* Upload error */}
-      {isError && (
-        <div style={{
-          marginTop: 6, fontSize: 11, color: "var(--danger)",
-          background: "rgba(231,76,60,0.08)", borderRadius: 4, padding: "4px 8px",
-        }}>
-          {uploadStatus.replace("error: ", "")}
-        </div>
-      )}
-
-      {/* Backup history panel */}
-      {expanded && (
-        <div style={{
-          marginTop: 8, background: "var(--bg)", borderRadius: "var(--radius)",
-          border: "1px solid var(--border)", overflow: "hidden",
-        }}>
-          {backups === null ? (
-            <div style={{ padding: "8px 10px", fontSize: 11, color: "var(--muted)" }}>Loading…</div>
-          ) : backups.length === 0 ? (
-            <div style={{ padding: "8px 10px", fontSize: 11, color: "var(--muted)" }}>
-              No backups yet. Backups are created automatically before each upload.
-            </div>
-          ) : (
-            backups.map(b => (
-              <div key={b.filename} style={{
-                display: "flex", alignItems: "center", gap: 6,
-                padding: "6px 10px", borderBottom: "1px solid var(--border)",
-                fontSize: 11,
-              }}>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ color: "var(--text)", fontFamily: "monospace", fontSize: 10,
-                    overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {formatDate(b.created_at)}
-                  </div>
-                  <div style={{ color: "var(--muted)", fontSize: 10 }}>{formatSize(b.size_bytes)}</div>
-                </div>
-                <button
-                  className="btn-ghost"
-                  style={{ fontSize: 10, padding: "2px 6px" }}
-                  title="Download this backup"
-                  onClick={() => downloadBackup(fileType, b.filename)}
-                  disabled={busyBackup === b.filename}
-                >↓</button>
-                <button
-                  className={confirmRestore === b.filename ? "btn-primary" : "btn-ghost"}
-                  style={{ fontSize: 10, padding: "2px 6px", whiteSpace: "nowrap" }}
-                  onClick={() => handleRestore(b.filename)}
-                  disabled={busyBackup === b.filename}
-                >
-                  {confirmRestore === b.filename ? "Confirm?" : "Restore"}
-                </button>
-                {confirmRestore === b.filename && (
-                  <button
-                    className="btn-ghost"
-                    style={{ fontSize: 10, padding: "2px 6px" }}
-                    onClick={() => setConfirmRestore(null)}
-                  >Cancel</button>
-                )}
-                <button
-                  className="btn-ghost"
-                  style={{ fontSize: 10, padding: "2px 6px", color: "var(--danger)" }}
-                  title="Delete this backup"
-                  onClick={() => handleDelete(b.filename)}
-                  disabled={busyBackup === b.filename}
-                >✕</button>
-              </div>
-            ))
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
 
 // ── Network management panel ──────────────────────────────────────────────────
 function NetworkPanel({ stops, routes, onAdd, onUpdate, onDelete, onUpload }) {
@@ -528,18 +334,6 @@ function NetworkPanel({ stops, routes, onAdd, onUpdate, onDelete, onUpload }) {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14, height: "100%", overflowY: "auto" }}>
-
-      {/* CSV Upload / Data Management */}
-      <div>
-        <div className="panel-title">Data Files</div>
-        <div className="card" style={{ display: "flex", flexDirection: "column", gap: 0 }}>
-          {UPLOAD_TYPES.map(({ key, label, hint }) => (
-            <DataFileManager key={key} fileType={key} label={label} hint={hint} onUpload={onUpload} />
-          ))}
-        </div>
-      </div>
-
-      <hr className="divider" />
 
       {/* Route CRUD */}
       {mode === "list" && (
@@ -685,6 +479,7 @@ function ScenarioPanel({ stops, routes, onSimulationComplete, onSimulateRoute, o
   const [params, setParams] = useState({
     walking_radius_miles: 0.25, max_travel_minutes: 30,
     average_speed_mph: 15, dwell_time_minutes: 0.5, transfer_penalty_minutes: 5,
+    highway_speed_mph: 55, highway_threshold_miles: 1.0,
   });
   const [running, setRunning]           = useState(false);
   const [err, setErr]                   = useState("");
@@ -703,7 +498,7 @@ function ScenarioPanel({ stops, routes, onSimulationComplete, onSimulateRoute, o
       setProposedRoutes(draft.proposedRoutes);
       setProposedStops(draft.proposedStops || []);
       setCustomStops(draft.customStops || []);
-      setParams(p => draft.params || p);
+      setParams(p => ({ ...p, ...(draft.params || {}) }));
       // Re-preview the last route so the map reflects the restored state
       const last = draft.proposedRoutes[draft.proposedRoutes.length - 1];
       const baseId = last.route_id.replace(/_MOD$/, "");
@@ -948,9 +743,11 @@ function ScenarioPanel({ stops, routes, onSimulationComplete, onSimulateRoute, o
           {[
             { key: "walking_radius_miles",    label: "Walking radius (mi)",   min: 0.1, max: 2,  step: 0.1  },
             { key: "max_travel_minutes",      label: "Max transit time (min)", min: 10,  max: 90, step: 5    },
-            { key: "average_speed_mph",       label: "Avg bus speed (mph)",    min: 8,   max: 30, step: 1    },
-            { key: "dwell_time_minutes",      label: "Dwell time / stop (min)",min: 0.25,max: 3,  step: 0.25 },
-            { key: "transfer_penalty_minutes",label: "Transfer penalty (min)", min: 0,   max: 15, step: 1    },
+            { key: "average_speed_mph",        label: "City street speed (mph)",     min: 8,   max: 35,  step: 1    },
+            { key: "highway_speed_mph",        label: "Highway speed (mph)",         min: 35,  max: 75,  step: 5    },
+            { key: "highway_threshold_miles",  label: "Highway threshold (mi)",      min: 0.25,max: 5,   step: 0.25 },
+            { key: "dwell_time_minutes",       label: "Dwell time / stop (min)",     min: 0.25,max: 3,   step: 0.25 },
+            { key: "transfer_penalty_minutes", label: "Transfer penalty (min)",      min: 0,   max: 15,  step: 1    },
           ].map(({ key, label, min, max, step }) => (
             <div key={key} className="form-row">
               <label style={{ display: "flex", justifyContent: "space-between" }}>
@@ -1070,9 +867,283 @@ function ScenarioPanel({ stops, routes, onSimulationComplete, onSimulateRoute, o
   );
 }
 
+// ── Demand Forecast ───────────────────────────────────────────────────────────
+const DF_CARD  = { background:"var(--surface2)", border:"1px solid var(--border)", borderRadius:"var(--radius)", padding:16, marginBottom:16 };
+const DF_TITLE = { fontSize:13, fontWeight:700, color:"var(--muted)", textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:12 };
+const DF_ROUTE_COLORS = {
+  "Route 1 Red Cliffs":"#f20c0c","Route 2 Riverside":"#3498db","Route 3 West Side Connector (Inbound)":"#2ecc71",
+  "Route 4 Sunset":"#f39c12","Route 5 Ivins":"#9b59b6","Route 6 Dixie Dr South":"#1abc9c",
+  "Route 7 Washington":"#e67e22","Route 8 Zion":"#e91e63",
+};
+const DF_SHORT = (r) => r.replace("Route ","R").replace(/\s.*/,"").trim();
+
+function dfHaversine(lat1, lng1, lat2, lng2) {
+  const R = 3958.8, toRad = d => d * Math.PI / 180;
+  const dLat = toRad(lat2-lat1), dLng = toRad(lng2-lng1);
+  const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLng/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+const DF_SCENARIOS = [
+  { label:"S. Bloomington – New Costco", lat:37.0721, lng:-113.5891, note:"Southern Bloomington development corridor. Major retail/employment growth area." },
+  { label:"Custom location", lat:"", lng:"", note:"" },
+];
+
+// ── Forecast map picker (no name field — just lat/lng) ─────────────────────────
+function ForecastMapPicker({ onConfirm, onCancel }) {
+  const [picked, setPicked] = useState(null);
+  return (
+    <div style={{ position:"fixed", inset:0, zIndex:9999, background:"rgba(0,0,0,0.65)", display:"flex", alignItems:"center", justifyContent:"center" }}>
+      <div style={{ background:"var(--surface2)", border:"1px solid var(--border)", borderRadius:10, padding:20, width:480, maxWidth:"95vw", display:"flex", flexDirection:"column", gap:12 }}>
+        <div style={{ fontWeight:700, fontSize:14 }}>Pick Forecast Location</div>
+        <div style={{ fontSize:12, color:"var(--muted)" }}>Click anywhere on the map to set the hypothetical stop location.</div>
+        <div style={{ height:300, borderRadius:6, overflow:"hidden", border:"1px solid var(--border)", cursor:"crosshair" }}>
+          <MapContainer center={[37.108, -113.583]} zoom={12} style={{ height:"100%", width:"100%" }} zoomControl>
+            <TileLayer attribution='&copy; OpenStreetMap' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+            <MapClickHandler onPick={(lat, lng) => setPicked({ lat, lng })} />
+            {picked && (
+              <CircleMarker center={[picked.lat, picked.lng]} radius={9} pathOptions={{ color:"#fff", fillColor:"#e6c928", fillOpacity:1, weight:2 }} />
+            )}
+          </MapContainer>
+        </div>
+        {picked && (
+          <div style={{ fontSize:11, color:"var(--accent)", fontFamily:"monospace" }}>
+            {picked.lat.toFixed(5)}, {picked.lng.toFixed(5)}
+          </div>
+        )}
+        <div style={{ display:"flex", gap:8, justifyContent:"flex-end" }}>
+          <button className="btn-ghost" onClick={onCancel}>Cancel</button>
+          <button className="btn-primary" onClick={() => onConfirm(picked.lat, picked.lng)} disabled={!picked}>
+            Use This Location
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DemandForecast({ stops, hubs, byRouteStop }) {
+  const [scenarioIdx, setScenarioIdx] = useState(0);
+  const [lat, setLat] = useState(DF_SCENARIOS[0].lat);
+  const [lng, setLng] = useState(DF_SCENARIOS[0].lng);
+  const [radius, setRadius] = useState(1.0);
+  const [showPicker, setShowPicker] = useState(false);
+
+  const selectScenario = (idx) => {
+    setScenarioIdx(idx);
+    setLat(DF_SCENARIOS[idx].lat);
+    setLng(DF_SCENARIOS[idx].lng);
+  };
+
+  const forecast = useMemo(() => {
+    const la = parseFloat(lat), lo = parseFloat(lng);
+    if (isNaN(la) || isNaN(lo)) return null;
+    const stopLookup = {};
+    stops.forEach(s => {
+      const key = (s.address || s.stop_name || "").trim().toLowerCase();
+      stopLookup[key] = { lat: parseFloat(s.latitude), lng: parseFloat(s.longitude), stop_id: s.stop_id, name: s.stop_name };
+    });
+    const nearbyStopData = [];
+    byRouteStop.forEach(row => {
+      const key = (row.address || "").trim().toLowerCase();
+      const stopInfo = stopLookup[key];
+      if (!stopInfo) return;
+      const dist = dfHaversine(la, lo, stopInfo.lat, stopInfo.lng);
+      if (dist <= radius) nearbyStopData.push({ name: row.address, route: row.route, avg_daily_in: parseFloat(row.avg_daily_in) || 0, dist });
+    });
+    const nearbyHubs = hubs.map(h => ({ name: h.hub_name, workers: h.estimated_workers, dist: dfHaversine(la, lo, parseFloat(h.latitude), parseFloat(h.longitude)) })).filter(h => h.dist <= 3).sort((a,b) => a.dist-b.dist);
+    if (nearbyStopData.length === 0) return { nearbyStops: [], nearbyHubs, low: 0, mid: 0, high: 0, confidence: "Low" };
+    const totalWeight = nearbyStopData.reduce((s, d) => s + (1/(d.dist+0.1)), 0);
+    const weightedAvg = nearbyStopData.reduce((s, d) => s + d.avg_daily_in*(1/(d.dist+0.1)), 0) / totalWeight;
+    const hubWorkers = nearbyHubs.reduce((s, h) => s + h.workers/Math.max(h.dist,0.25), 0);
+    const hubMultiplier = Math.min(1 + hubWorkers/5000, 2.5);
+    const base = weightedAvg * hubMultiplier;
+    const confidence = nearbyStopData.length >= 3 ? "High" : nearbyStopData.length === 2 ? "Medium" : "Low";
+    return { nearbyStops: nearbyStopData.sort((a,b) => a.dist-b.dist).slice(0,5), nearbyHubs, low: Math.round(base*0.6), mid: Math.round(base), high: Math.round(base*1.5), confidence, weightedAvg: Math.round(weightedAvg) };
+  }, [lat, lng, radius, stops, hubs, byRouteStop]);
+
+  const confColor = forecast?.confidence === "High" ? "var(--success)" : forecast?.confidence === "Medium" ? "var(--warning)" : "var(--danger)";
+  const [showMethodology, setShowMethodology] = useState(false);
+
+  return (
+    <div style={{ flex:1, overflowY:"auto", padding:24 }}>
+      <div style={{ fontSize:16, fontWeight:700, color:"var(--muted)", textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:16 }}>
+        Demand Forecast — Hypothetical Stop
+      </div>
+
+      {/* ── Methodology explainer ── */}
+      <div style={{ background:"var(--surface2)", border:"1px solid var(--border)", borderRadius:"var(--radius)", marginBottom:16, overflow:"hidden" }}>
+        <button
+          onClick={() => setShowMethodology(v => !v)}
+          style={{ width:"100%", display:"flex", alignItems:"center", justifyContent:"space-between", padding:"10px 14px", background:"transparent", border:"none", cursor:"pointer", color:"var(--muted)", fontSize:12, fontWeight:600 }}
+        >
+          <span>ℹ How does this estimate work?</span>
+          <span style={{ fontSize:10 }}>{showMethodology ? "▲ Hide" : "▼ Show"}</span>
+        </button>
+        {showMethodology && (
+          <div style={{ padding:"0 14px 14px", fontSize:12, color:"var(--text)", lineHeight:1.7, borderTop:"1px solid var(--border)" }}>
+            <p style={{ marginTop:12, marginBottom:8, fontWeight:600, color:"var(--accent)" }}>Overview</p>
+            <p style={{ margin:"0 0 10px" }}>
+              This tool estimates how many riders per day a <em>new</em> bus stop at your chosen location might attract,
+              based on two factors: how busy nearby existing stops are, and how close major employment hubs are.
+            </p>
+
+            <p style={{ margin:"0 0 6px", fontWeight:600, color:"var(--accent)" }}>Step 1 — Find nearby stops</p>
+            <p style={{ margin:"0 0 10px" }}>
+              The model scans all existing stops that have ridership data and keeps only those within your
+              chosen <strong>search radius</strong>. If no stops fall within that radius, widen it and try again.
+            </p>
+
+            <p style={{ margin:"0 0 6px", fontWeight:600, color:"var(--accent)" }}>Step 2 — Distance-weighted ridership</p>
+            <p style={{ margin:"0 0 10px" }}>
+              Each nearby stop's average daily boardings are weighted by how close it is — stops right next
+              to your location count more than stops near the edge of the radius. This produces a baseline
+              ridership estimate for the area.
+            </p>
+
+            <p style={{ margin:"0 0 6px", fontWeight:600, color:"var(--accent)" }}>Step 3 — Employment hub multiplier</p>
+            <p style={{ margin:"0 0 10px" }}>
+              Employment hubs within 3 miles boost the estimate. The more workers nearby (and the closer
+              they are), the higher the multiplier — up to a maximum of <strong>2.5×</strong>. This reflects
+              that stops near large employers tend to attract more commuter riders.
+            </p>
+
+            <p style={{ margin:"0 0 6px", fontWeight:600, color:"var(--accent)" }}>Step 4 — Low / Mid / High range</p>
+            <p style={{ margin:"0 0 10px" }}>
+              The mid estimate is the model's best guess. Low is 60% of that (pessimistic scenario) and
+              High is 150% (optimistic scenario), reflecting real-world uncertainty.
+            </p>
+
+            <p style={{ margin:"0 0 6px", fontWeight:600, color:"var(--accent)" }}>Confidence level</p>
+            <p style={{ margin:"0 0 10px" }}>
+              <strong style={{ color:"var(--success)" }}>High</strong> — 3 or more nearby stops found (strong local data). &nbsp;
+              <strong style={{ color:"var(--warning)" }}>Medium</strong> — 2 nearby stops. &nbsp;
+              <strong style={{ color:"var(--danger)" }}>Low</strong> — only 1 nearby stop (treat estimates as rough guidance only).
+            </p>
+
+            <p style={{ margin:"0 0 6px", fontWeight:600, color:"var(--accent)" }}>Important limitations</p>
+            <ul style={{ margin:"0 0 4px", paddingLeft:18 }}>
+              <li>Only stops with existing ridership records can inform the model — gaps in the data reduce accuracy.</li>
+              <li>The model assumes the new stop would serve a similar population to nearby existing stops.</li>
+              <li>It does not account for time of day, land-use zoning, or planned future development.</li>
+              <li>The employment hub multiplier is a general heuristic, not calibrated to St. George specifically.</li>
+            </ul>
+          </div>
+        )}
+      </div>
+
+      <div style={DF_CARD}>
+        <div style={{fontSize:12,color:"var(--muted)",marginBottom:12,lineHeight:1.5}}>
+          Estimates projected daily boardings for a new stop based on distance-weighted ridership from nearby existing stops and employment hub proximity.
+        </div>
+        <div style={{marginBottom:12}}>
+          <label style={{display:"block",fontSize:12,color:"var(--muted)",marginBottom:6}}>Scenario</label>
+          <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+            {DF_SCENARIOS.map((s,i) => (
+              <button key={i} onClick={() => selectScenario(i)} style={{
+                padding:"5px 12px", fontSize:12, fontWeight:600, borderRadius:6, cursor:"pointer",
+                border:`1px solid ${scenarioIdx===i ? "var(--accent)" : "var(--border)"}`,
+                background: scenarioIdx===i ? "rgba(230,201,40,0.15)" : "transparent",
+                color: scenarioIdx===i ? "var(--accent)" : "var(--muted)",
+              }}>{s.label}</button>
+            ))}
+          </div>
+          {DF_SCENARIOS[scenarioIdx]?.note && (
+            <div style={{fontSize:11,color:"var(--muted)",marginTop:6,fontStyle:"italic"}}>{DF_SCENARIOS[scenarioIdx].note}</div>
+          )}
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:12}}>
+          <div className="form-row">
+            <label>Latitude</label>
+            <input value={lat} onChange={e=>setLat(e.target.value)} placeholder="37.07" />
+          </div>
+          <div className="form-row">
+            <label>Longitude</label>
+            <input value={lng} onChange={e=>setLng(e.target.value)} placeholder="-113.59" />
+          </div>
+          <div className="form-row">
+            <label>Search radius (mi)</label>
+            <input type="number" value={radius} min={0.25} max={5} step={0.25} onChange={e=>setRadius(parseFloat(e.target.value))} />
+          </div>
+        </div>
+        {scenarioIdx === 1 && (
+          <button
+            type="button"
+            className="btn-ghost"
+            onClick={() => setShowPicker(true)}
+            style={{ fontSize:12, marginBottom:12, display:"flex", alignItems:"center", gap:6 }}
+          >
+            📍 Pick location on map
+          </button>
+        )}
+        {showPicker && (
+          <ForecastMapPicker
+            onConfirm={(la, lo) => { setLat(la); setLng(lo); setShowPicker(false); }}
+            onCancel={() => setShowPicker(false)}
+          />
+        )}
+        {forecast && (
+          <>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:14}}>
+              {[{label:"Low Estimate",value:forecast.low,color:"var(--muted)"},{label:"Mid Estimate",value:forecast.mid,color:"var(--accent)"},{label:"High Estimate",value:forecast.high,color:"var(--success)"}].map((e,i) => (
+                <div key={i} style={{background:"var(--surface)",border:"1px solid var(--border)",borderRadius:"var(--radius)",padding:"10px 12px",textAlign:"center"}}>
+                  <div style={{fontSize:11,color:"var(--muted)",marginBottom:4}}>{e.label}</div>
+                  <div style={{fontSize:22,fontWeight:700,color:e.color}}>{e.value > 0 ? e.value : "—"}</div>
+                  <div style={{fontSize:10,color:"var(--muted)"}}>avg boardings/day</div>
+                </div>
+              ))}
+            </div>
+            <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14}}>
+              <span style={{fontSize:12,color:"var(--muted)"}}>Model confidence:</span>
+              <span style={{fontSize:12,fontWeight:700,color:confColor}}>{forecast.confidence}</span>
+              <span style={{fontSize:11,color:"var(--muted)"}}>({forecast.nearbyStops.length} nearby stop{forecast.nearbyStops.length!==1?"s":""} within {radius} mi)</span>
+            </div>
+            {forecast.nearbyStops.length > 0 && (
+              <div style={{marginBottom:12}}>
+                <div style={{fontSize:12,fontWeight:600,marginBottom:6}}>Nearby stops used in model</div>
+                <table style={{width:"100%",borderCollapse:"collapse",fontSize:11}}>
+                  <thead><tr>
+                    {["Stop","Route","Dist (mi)","Avg/Day"].map((h,i) => <th key={i} style={{textAlign:i>=2?"right":"left",color:"var(--muted)",padding:"4px 6px",borderBottom:"1px solid var(--border)"}}>{h}</th>)}
+                  </tr></thead>
+                  <tbody>
+                    {forecast.nearbyStops.map((s,i) => (
+                      <tr key={i} style={{borderBottom:"1px solid var(--border)"}}>
+                        <td style={{padding:"4px 6px"}}>{s.name}</td>
+                        <td style={{padding:"4px 6px"}}><span style={{color:DF_ROUTE_COLORS[s.route]||"var(--muted)",fontWeight:600}}>{DF_SHORT(s.route)}</span></td>
+                        <td style={{padding:"4px 6px",textAlign:"right",fontFamily:"monospace"}}>{s.dist.toFixed(2)}</td>
+                        <td style={{padding:"4px 6px",textAlign:"right",color:"var(--accent)",fontWeight:600}}>{s.avg_daily_in}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            {forecast.nearbyHubs.length > 0 && (
+              <div>
+                <div style={{fontSize:12,fontWeight:600,marginBottom:6}}>Nearby employment hubs (within 3 mi)</div>
+                <div style={{display:"flex",flexDirection:"column",gap:4}}>
+                  {forecast.nearbyHubs.slice(0,4).map((h,i) => (
+                    <div key={i} style={{display:"flex",justifyContent:"space-between",fontSize:11,padding:"4px 8px",background:"var(--surface)",borderRadius:4}}>
+                      <span>{h.name}</span>
+                      <span style={{color:"var(--muted)"}}>{h.workers.toLocaleString()} workers · {h.dist.toFixed(2)} mi</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {forecast.nearbyStops.length === 0 && (
+              <div style={{color:"var(--muted)",fontSize:12,fontStyle:"italic"}}>No stops with ridership data found within {radius} mi. Try increasing the search radius.</div>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Main export ───────────────────────────────────────────────────────────────
-export default function SimulationControls({ stops, routes, onAdd, onUpdate, onDelete, onUpload, onSimulationComplete, onSimulateRoute, onResetSimulation }) {
-  const [view, setView] = useState("scenario"); // scenario | network
+export default function SimulationControls({ stops, routes, hubs, byRouteStop, onAdd, onUpdate, onDelete, onUpload, onSimulationComplete, onSimulateRoute, onResetSimulation }) {
+  const [view, setView] = useState("scenario"); // scenario | network | forecast
 
   return (
     <div style={{ display: "flex", flexDirection: "column", flex: 1, overflow: "hidden" }}>
@@ -1082,6 +1153,7 @@ export default function SimulationControls({ stops, routes, onAdd, onUpdate, onD
         {[
           { id: "scenario", label: "Scenario Planning" },
           { id: "network",  label: "Manage Network"    },
+          { id: "forecast", label: "Demand Forecast"   },
         ].map(t => (
           <button key={t.id} onClick={() => setView(t.id)} style={{
             padding: "6px 18px", fontSize: 13, fontWeight: 700, borderRadius: "6px 6px 0 0",
@@ -1105,6 +1177,9 @@ export default function SimulationControls({ stops, routes, onAdd, onUpdate, onD
             onSimulateRoute={onSimulateRoute}
             onResetSimulation={onResetSimulation}
           />
+        )}
+        {view === "forecast" && (
+          <DemandForecast stops={stops} hubs={hubs} byRouteStop={byRouteStop} />
         )}
         {view === "network" && (
           <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>

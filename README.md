@@ -28,7 +28,6 @@ uvicorn main:app --reload --port 8000
 **Frontend** (separate terminal)
 ```bash
 cd frontend
-cp .env.example .env          # then add your Mapbox token
 npm install
 npm run dev
 ```
@@ -36,16 +35,6 @@ npm run dev
 ---
 
 ## Configuration
-
-### Mapbox token (required for road-segment map routing)
-
-1. Create a free account at https://account.mapbox.com/
-2. Copy your public token
-3. In `frontend/`, copy `.env.example` → `.env` and paste the token
-
-```
-VITE_MAPBOX_TOKEN=pk.your_token_here
-```
 
 ### Adding users
 

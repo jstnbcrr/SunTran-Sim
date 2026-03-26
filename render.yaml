@@ -3,11 +3,6 @@ services:
     name: suntran-sim
     runtime: docker
     dockerfilePath: ./Dockerfile
-    dockerBuildArgs:
-      - key: VITE_MAPBOX_TOKEN
-        value: ${VITE_MAPBOX_TOKEN}
     envVars:
-      - key: VITE_MAPBOX_TOKEN
-        sync: false
       - key: JWT_SECRET
         generateValue: true

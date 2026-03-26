@@ -22,9 +22,17 @@ def travel_time_minutes(
     distance_miles: float,
     speed_mph: float = 15.0,
     dwell_time: float = 0.5,
+    highway_speed_mph: float = 55.0,
+    highway_threshold_miles: float = 1.0,
 ) -> float:
-    """Estimate travel time between two consecutive stops."""
-    return (distance_miles / speed_mph) * 60 + dwell_time
+    """Estimate travel time between two consecutive stops.
+
+    If the distance between stops exceeds highway_threshold_miles the segment
+    is assumed to be on a highway and highway_speed_mph is used instead of
+    the local street speed_mph.
+    """
+    effective_speed = highway_speed_mph if distance_miles >= highway_threshold_miles else speed_mph
+    return (distance_miles / effective_speed) * 60 + dwell_time
 
 
 # ── Graph Construction ─────────────────────────────────────────────────────────
@@ -35,6 +43,8 @@ def build_transit_graph(
     speed_mph: float = 15.0,
     dwell_time: float = 0.5,
     transfer_penalty: float = 5.0,
+    highway_speed_mph: float = 55.0,
+    highway_threshold_miles: float = 1.0,
 ) -> nx.DiGraph:
     """
     Build a directed weighted graph of the transit network.
@@ -85,7 +95,7 @@ def build_transit_graph(
             s = stop_index[src]
             d = stop_index[dst]
             dist = haversine_miles(s["lat"], s["lon"], d["lat"], d["lon"])
-            time = travel_time_minutes(dist, speed_mph, dwell_time)
+            time = travel_time_minutes(dist, speed_mph, dwell_time, highway_speed_mph, highway_threshold_miles)
 
             # Add route-specific nodes if not already present
             if src_r not in G:

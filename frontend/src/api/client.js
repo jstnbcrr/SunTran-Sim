@@ -97,3 +97,75 @@ export const downloadBackup = (fileType, filename) =>
     a.href = url; a.download = filename; a.click();
     URL.revokeObjectURL(url);
   });
+
+// ── Boardings / OTP data import ───────────────────────────────────────────────
+
+export const getBoardingsInfo = (fileType) =>
+  api.get(`/data/boardings/${fileType}/info`).then(r => r.data);
+
+export const downloadBoardingsCsv = (fileType, filename) =>
+  api.get(`/data/boardings/${fileType}/download`, { responseType: "blob" }).then(r => {
+    const url = URL.createObjectURL(r.data);
+    const a = document.createElement("a");
+    a.href = url; a.download = filename; a.click();
+    URL.revokeObjectURL(url);
+  });
+
+export const previewBoardingsUpload = (fileType, file) => {
+  const form = new FormData();
+  form.append("file", file);
+  return api.post(`/upload/boardings/${fileType}/preview`, form).then(r => r.data);
+};
+
+export const uploadBoardings = (fileType, file, mode = "merge") => {
+  const form = new FormData();
+  form.append("file", file);
+  return api.post(`/upload/boardings/${fileType}?mode=${mode}`, form).then(r => r.data);
+};
+
+export const uploadOtpExcel = (file, mode = "merge") => {
+  const form = new FormData();
+  form.append("file", file);
+  return api.post(`/upload/otp-excel?mode=${mode}`, form).then(r => r.data);
+};
+
+// ── Structured import slots ───────────────────────────────────────────────────
+
+export const getImportSlots    = ()          => api.get("/import/slots").then(r => r.data);
+export const getSlotInfo       = (slotKey)   => api.get(`/import/slots/${slotKey}/info`).then(r => r.data);
+
+export const downloadTemplate  = (slotKey, filename) => {
+  // Template endpoint is public (no auth needed for download)
+  return fetch(`/api/templates/${slotKey}`)
+    .then(r => r.blob())
+    .then(blob => {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = filename.replace(".csv", "_template.xlsx"); a.click();
+      URL.revokeObjectURL(url);
+    });
+};
+
+export const previewSlotUpload = (slotKey, file) => {
+  const form = new FormData();
+  form.append("file", file);
+  return api.post(`/import/slots/${slotKey}/preview`, form).then(r => r.data);
+};
+
+export const uploadToSlot = (slotKey, file, mode = "merge") => {
+  const form = new FormData();
+  form.append("file", file);
+  return api.post(`/import/slots/${slotKey}?mode=${mode}`, form).then(r => r.data);
+};
+
+export const smartImportPreview = (files) => {
+  const form = new FormData();
+  files.forEach(f => form.append("files", f));
+  return api.post("/upload/smart/preview", form).then(r => r.data);
+};
+
+export const smartImport = (files, mode = "merge") => {
+  const form = new FormData();
+  files.forEach(f => form.append("files", f));
+  return api.post(`/upload/smart?mode=${mode}`, form).then(r => r.data);
+};
