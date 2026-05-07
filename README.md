@@ -4,44 +4,33 @@ A web application built for SunTran and Washington County to analyze bus route p
 
 ---
 
-## What You Need
+## Quick Start (Docker — recommended)
 
-**Option A: Docker (easiest — one command)**
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/) — that is all you need
+**Step 1 — Install Docker Desktop** (one time only)
+Download and install from: https://www.docker.com/products/docker-desktop/
+Open it and wait for it to finish starting before continuing.
 
-**Option B: Without Docker**
+**Step 2 — Download the app**
+Click the green **Code** button on this page → **Download ZIP** → unzip it anywhere on your computer.
+
+**Step 3 — Launch**
+- **Windows:** double-click `START.bat`
+- **Mac:** double-click `START.command`
+
+The app opens in your browser automatically at `http://localhost:5176`.
+Default login: **admin / suntran**
+
+To stop the app, come back to the terminal window and press **Enter** (or any key on Windows).
+
+---
+
+## Alternative: No Docker (Python + Node)
+
+If you prefer not to use Docker, you can run the app directly.
+
+**Requirements**
 - Python 3.11 or 3.12
 - Node.js 18 or higher
-
----
-
-## Getting Started
-
-### Option A: Docker
-
-```bash
-git clone https://github.com/jstnbcrr/SunTran-Sim.git
-cd SunTran-Sim
-docker compose up --build
-```
-
-That is it. On the very first run, the app will generate a login password and print it in the terminal output:
-
-```
-====================================================
-  SUNTRAN FIRST-RUN SETUP
-  Default account created:
-    Username : admin
-    Password : suntran
-  Log in at http://localhost:5173
-====================================================
-```
-
-Open **http://localhost:5173** and use those credentials to log in.
-
----
-
-### Option B: Without Docker
 
 **Backend** — open a terminal in the project folder:
 
@@ -59,7 +48,7 @@ npm install
 npm run dev
 ```
 
-Open **http://localhost:5173**. The same first-run password will be printed in the backend terminal.
+Open **http://localhost:5173**. The default login will be printed in the backend terminal on first run.
 
 ---
 
@@ -68,14 +57,15 @@ Open **http://localhost:5173**. The same first-run password will be printed in t
 The app starts with the route and stop network already loaded. The ridership charts will be empty until the SunTran operational data files are imported.
 
 1. Log in and click the **Import** tab
-2. Click **Smart Import**
-3. Drag in the four monthly vendor files (Average Passenger Counts, Stop Activity, Schedule Adherence, Route Performance)
-4. The system auto-detects each file type and shows a preview
-5. Click **Import** to confirm
+2. Under **Raw AVL/APC Vendor Files**, upload each of the four monthly files from SunTran:
+   - Average Passenger Counts
+   - Trip OTP by Route and Stop
+   - Hourly APC Counts
+   - Raw Stop Arrival Times (optional)
+3. Each card shows a preview before saving anything
+4. Click **Import** to confirm
 
-The app validates the files before saving anything. If a file has a problem it will tell you before any data is changed. Every import automatically creates a backup of the previous data.
-
-To add a new month of data later, repeat the same steps. New months are merged in without overwriting the existing history.
+To add a new month of data later, repeat the same steps. New months are merged in without overwriting existing history. Every import automatically creates a backup of the previous data.
 
 ---
 
@@ -88,13 +78,13 @@ Shows the full SunTran route network on an interactive map. Click any stop to se
 Build a proposed route change and test it against the real network. Add new stops, modify existing routes, or sketch entirely new ones. Run the simulation to get a before-and-after comparison showing how many employment hubs the network can reach.
 
 **Metrics**
-System-level performance dashboard. Shows on-time performance by route, route efficiency (boardings per mile and per stop), employment hub accessibility, and a full schedule reliability breakdown by stop.
+System-level performance dashboard. Shows on-time performance by route, route efficiency (boardings per mile and per stop), employment hub accessibility, and a full schedule reliability breakdown by stop. Use the period selector above the OTP charts to switch between uploaded months.
 
 **Ridership**
-Detailed ridership charts broken down by route, stop, day of week, month, and hour of day. Use the period filter at the top to focus on a specific month or set of months. All charts update automatically.
+Detailed ridership charts broken down by route, stop, day of week, month, and hour of day. All charts update automatically.
 
 **Import**
-Upload new monthly data files from SunTran. Supports smart auto-detection of vendor file formats. Also lets you download current data, view backup history, and restore a previous version if something goes wrong.
+Upload new monthly data files from SunTran. Also lets you download current data, view backup history, and restore a previous version if something goes wrong.
 
 **Instructions**
 Built-in user guide covering every tab in plain English.
@@ -103,9 +93,9 @@ Built-in user guide covering every tab in plain English.
 
 ## Adding or Changing Users
 
-The auto-generated password on first run is fine for initial access. To set your own password or add more users, use the built-in user management in the app settings, or edit `backend/users.json` directly.
+To set your own password or add more users, use the built-in user management in the app settings, or edit `backend/users.json` directly.
 
-Passwords are stored as bcrypt hashes — plain text passwords are never saved anywhere. Restart the backend after editing the file manually.
+Passwords are stored as bcrypt hashes. Restart the backend after editing the file manually.
 
 ---
 
@@ -121,7 +111,7 @@ backend/
   requirements.txt
 
 frontend/src/
-  App.jsx                  — Root component and data fetching
+  App.jsx                  — Root component and tab navigation
   api/client.js            — API client
   components/              — One file per tab
 
@@ -129,7 +119,7 @@ data/
   routes.csv               — Route definitions
   stops.csv                — Stop locations
   employment_hubs.csv      — Employer locations
-  [ridership files]        — Provided separately, loaded via Import tab
+  [ridership files]        — Loaded via Import tab
 ```
 
 ---
