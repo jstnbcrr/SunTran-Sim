@@ -380,10 +380,9 @@ function RawImportCard({ rawType, label, filename, desc, outputs, onRefreshAll }
   const [preview,     setPreview] = useState(null);
   const [error,       setError]   = useState(null);
   const [pendingFile, setPending] = useState(null);
-  const [otpPeriod,   setOtpPeriod] = useState(() => {
-    const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-  });
+  const [otpMonth, setOtpMonth] = useState(() => String(new Date().getMonth() + 1).padStart(2, "0"));
+  const [otpYear,  setOtpYear]  = useState(() => String(new Date().getFullYear()));
+  const otpPeriod = `${otpYear}-${otpMonth}`;
   const inputRef = useRef();
 
   useEffect(() => {
@@ -457,19 +456,30 @@ function RawImportCard({ rawType, label, filename, desc, outputs, onRefreshAll }
               ))}
             </div>
             {rawType === "otp-trip" && (
-              <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 8 }}>
+              <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                 <span style={{ fontSize: 11, color: "var(--muted)" }}>Archive as period:</span>
-                <input
-                  type="month"
-                  value={otpPeriod}
-                  onChange={e => setOtpPeriod(e.target.value)}
-                  style={{
-                    fontSize: 11, padding: "3px 8px",
-                    background: "var(--surface2)", color: "var(--text)",
-                    border: "1px solid var(--border)", borderRadius: 6,
-                    colorScheme: "dark",
-                  }}
-                />
+                <select
+                  value={otpMonth}
+                  onChange={e => setOtpMonth(e.target.value)}
+                  style={{ fontSize: 11, padding: "3px 8px", background: "var(--surface2)",
+                    color: "var(--text)", border: "1px solid var(--border)", borderRadius: 6 }}
+                >
+                  {["01","02","03","04","05","06","07","08","09","10","11","12"].map((m, i) => (
+                    <option key={m} value={m}>
+                      {["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][i]}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  value={otpYear}
+                  onChange={e => setOtpYear(e.target.value)}
+                  style={{ fontSize: 11, padding: "3px 8px", background: "var(--surface2)",
+                    color: "var(--text)", border: "1px solid var(--border)", borderRadius: 6 }}
+                >
+                  {Array.from({ length: 6 }, (_, i) => String(new Date().getFullYear() - 2 + i)).map(y => (
+                    <option key={y} value={y}>{y}</option>
+                  ))}
+                </select>
                 <span style={{ fontSize: 10, color: "var(--muted)" }}>
                   (sets the label in the Metrics OTP selector)
                 </span>
