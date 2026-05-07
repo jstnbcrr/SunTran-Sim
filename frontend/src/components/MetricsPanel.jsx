@@ -1248,9 +1248,9 @@ export default function MetricsPanel({ metrics, simResult, routes, otp, simulate
 
   const s = metrics.summary;
 
-  // Compute system-wide avg OTP from otp data
-  const systemOtp = otp?.length
-    ? (otp.reduce((sum, r) => sum + parseFloat(r.ontime_pct || 0), 0) / otp.length).toFixed(1)
+  // Compute system-wide avg OTP — follows the selected period
+  const systemOtp = activeOtp?.length
+    ? (activeOtp.reduce((sum, r) => sum + parseFloat(r.ontime_pct || 0), 0) / activeOtp.length).toFixed(1)
     : null;
 
   // Total route miles and avg stop spacing across all routes
@@ -1267,7 +1267,7 @@ export default function MetricsPanel({ metrics, simResult, routes, otp, simulate
 
   return (
     <div style={{ flex: 1, overflowY: "auto", padding: 24 }}>
-      <DetailModal modalKey={activeModal} metrics={metrics} otp={otp} onClose={() => setActiveModal(null)} />
+      <DetailModal modalKey={activeModal} metrics={metrics} otp={activeOtp} onClose={() => setActiveModal(null)} />
 
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
         <div className="panel-title" style={{ fontSize: 16 }}>
