@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import MapView from "./components/MapView";
 import SimulationControls from "./components/SimulationControls";
 import MetricsPanel from "./components/MetricsPanel";
@@ -15,8 +15,16 @@ import {
   getBoardingsByDow,
   getBoardingsByMonth,
   getBoardingsByRouteDow,
+  getBoardingsByRouteDowMonth,
   getBoardingsByRouteMonth,
   getBoardingsByRouteStop,
+  getBoardingsByHour,
+  getBoardingsByRouteHour,
+  getBoardingsByDowHour,
+  getBoardingsByRouteDowHour,
+  getBoardingsByRouteStopHour,
+  getBoardingsByStopMonth,
+  getBoardingsByDowMonth,
   addRoute,
   updateRoute,
   deleteRoute,
@@ -47,14 +55,38 @@ export default function App() {
   const [boardingsRoute,      setBoardingsRoute]      = useState([]);
   const [boardingsDow,        setBoardingsDow]        = useState([]);
   const [boardingsMonth,      setBoardingsMonth]      = useState([]);
-  const [boardingsRouteDow,   setBoardingsRouteDow]   = useState([]);
+  const [boardingsRouteDow,        setBoardingsRouteDow]        = useState([]);
+  const [boardingsRouteDowMonth,   setBoardingsRouteDowMonth]   = useState([]);
   const [boardingsRouteMonth, setBoardingsRouteMonth] = useState([]);
   const [boardingsRouteStop,  setBoardingsRouteStop]  = useState([]);
+  const [boardingsHour,         setBoardingsHour]         = useState([]);
+  const [boardingsRouteHour,    setBoardingsRouteHour]    = useState([]);
+  const [boardingsDowHour,      setBoardingsDowHour]      = useState([]);
+  const [boardingsRouteDowHour, setBoardingsRouteDowHour] = useState([]);
+  const [boardingsRouteStopHour,setBoardingsRouteStopHour]= useState([]);
+  const [boardingsStopMonth,    setBoardingsStopMonth]    = useState([]);
+  const [boardingsDowMonth,     setBoardingsDowMonth]     = useState([]);
+  const [monthFilter,           setMonthFilter]           = useState([]); // [] = all time
   const [loading, setLoading]       = useState(true);
   const [error, setError]           = useState(null);
   const [showCoverage, setShowCoverage] = useState(false);
   // Undo stack: each entry is { type: 'add'|'update'|'delete', routeId, snapshot }
   const [undoStack, setUndoStack]   = useState([]);
+
+  // Derive sorted list of available months from byRouteMonth data
+  const availableMonths = useMemo(() => {
+    const months = new Set();
+    boardingsRouteMonth.forEach(r => { if (r.month) months.add(r.month); });
+    return Array.from(months).sort();
+  }, [boardingsRouteMonth]);
+
+  // Reset filter if months disappear (e.g. after data reload)
+  useEffect(() => {
+    if (monthFilter.length > 0 && availableMonths.length > 0) {
+      const valid = monthFilter.filter(m => availableMonths.includes(m));
+      if (valid.length !== monthFilter.length) setMonthFilter(valid);
+    }
+  }, [availableMonths]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Auth state — check localStorage on mount
   const [currentUser, setCurrentUser] = useState(
@@ -96,7 +128,7 @@ export default function App() {
     setLoading(true);
     setError(null);
     try {
-      const [s, r, h, m, o, bs, br, bd, bm, brd, brm, brs] = await Promise.all([
+      const fetches = [
         getStops(),
         getRoutes(),
         getEmploymentHubs(),
@@ -109,21 +141,48 @@ export default function App() {
         getBoardingsByRouteDow(),
         getBoardingsByRouteMonth(),
         getBoardingsByRouteStop(),
-      ]);
-      setStops(s);
-      setRoutes(r);
-      setHubs(h);
-      setMetrics(m);
-      setOtp(o);
-      setBoardingsStop(bs);
-      setBoardingsRoute(br);
-      setBoardingsDow(bd);
-      setBoardingsMonth(bm);
-      setBoardingsRouteDow(brd);
-      setBoardingsRouteMonth(brm);
-      setBoardingsRouteStop(brs);
+        getBoardingsByHour(),
+        getBoardingsByRouteHour(),
+        getBoardingsByDowHour(),
+        getBoardingsByRouteDowHour(),
+        getBoardingsByRouteStopHour(),
+        getBoardingsByStopMonth(),
+        getBoardingsByDowMonth(),
+        getBoardingsByRouteDowMonth(),
+      ];
+      const results = await Promise.allSettled(fetches);
+      const val = (i, fallback = []) =>
+        results[i].status === "fulfilled" ? results[i].value : fallback;
+
+      setStops(val(0, []));
+      setRoutes(val(1, []));
+      setHubs(val(2, []));
+      setMetrics(val(3, null));
+      setOtp(val(4, []));
+      setBoardingsStop(val(5, []));
+      setBoardingsRoute(val(6, []));
+      setBoardingsDow(val(7, []));
+      setBoardingsMonth(val(8, []));
+      setBoardingsRouteDow(val(9, []));
+      setBoardingsRouteMonth(val(10, []));
+      setBoardingsRouteStop(val(11, []));
+      setBoardingsHour(val(12, []));
+      setBoardingsRouteHour(val(13, []));
+      setBoardingsDowHour(val(14, []));
+      setBoardingsRouteDowHour(val(15, []));
+      setBoardingsRouteStopHour(val(16, []));
+      setBoardingsStopMonth(val(17, []));
+      setBoardingsDowMonth(val(18, []));
+      setBoardingsRouteDowMonth(val(19, []));
+
+      // Surface errors only for critical fetches
+      const criticalFailed = [0, 1, 2].some(i => results[i].status === "rejected" &&
+        results[i].reason?.response?.status !== 401);
+      if (criticalFailed) {
+        setError("Could not reach backend. Is the server running?");
+      }
     } catch (e) {
-      if (e.response?.status !== 401) {
+      if (e?.response?.status !== 401) {
         setError("Could not reach backend. Is the server running?");
       }
     } finally {
@@ -248,6 +307,10 @@ export default function App() {
             showCoverage={showCoverage}
             onToggleCoverage={() => setShowCoverage(v => !v)}
             boardingsByStop={boardingsStop}
+            boardingsStopMonth={boardingsStopMonth}
+            monthFilter={monthFilter}
+            onMonthFilterChange={setMonthFilter}
+            availableMonths={availableMonths}
           />
         )}
         {activeTab === "Simulate" && (
@@ -286,6 +349,18 @@ export default function App() {
             byRouteDow={boardingsRouteDow}
             byRouteMonth={boardingsRouteMonth}
             byRouteStop={boardingsRouteStop}
+            byHour={boardingsHour}
+            byRouteHour={boardingsRouteHour}
+            byDowHour={boardingsDowHour}
+            byRouteDowHour={boardingsRouteDowHour}
+            byRouteStopHour={boardingsRouteStopHour}
+            byStopMonth={boardingsStopMonth}
+            byDowMonth={boardingsDowMonth}
+            byRouteDowMonth={boardingsRouteDowMonth}
+            availableMonths={availableMonths}
+            monthFilter={monthFilter}
+            onMonthFilterChange={setMonthFilter}
+            otp={otp}
           />
         )}
         {activeTab === "Import" && <DataImportPanel onUpload={fetchAll} />}

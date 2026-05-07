@@ -176,7 +176,7 @@ def generate_accessibility_report(
     }
 
 
-def export_metrics_csv(report: dict) -> str:
+def export_metrics_csv(report: dict, otp: list | None = None) -> str:
     """Serialize the key metrics sections to a CSV string for download."""
     output = io.StringIO()
     writer = csv.writer(output)
@@ -201,5 +201,19 @@ def export_metrics_csv(report: dict) -> str:
     writer.writerow(["route_id", "route_name", "stop_count", "total_distance_miles"])
     for r in report["route_performance"]:
         writer.writerow([r["route_id"], r["route_name"], r["stop_count"], r["total_distance_miles"]])
+
+    if otp:
+        writer.writerow([])
+        writer.writerow(["=== ON-TIME PERFORMANCE ==="])
+        writer.writerow(["route_id", "route_name", "direction", "stop_name", "order",
+                         "early_pct", "ontime_pct", "late_pct", "avg_deviation", "total_trips"])
+        for row in otp:
+            writer.writerow([
+                row.get("route_id", ""), row.get("route_name", ""),
+                row.get("direction", ""), row.get("stop_name", ""),
+                row.get("order", ""), row.get("early_pct", ""),
+                row.get("ontime_pct", ""), row.get("late_pct", ""),
+                row.get("avg_deviation", ""), row.get("total_trips", ""),
+            ])
 
     return output.getvalue()

@@ -32,6 +32,31 @@ def _load_users() -> dict[str, str]:
     with open(USERS_FILE) as f:
         return json.load(f)
 
+
+def _save_users(users: dict[str, str]) -> None:
+    with open(USERS_FILE, "w") as f:
+        json.dump(users, f, indent=2)
+
+
+def create_user(username: str, password: str) -> None:
+    users = _load_users()
+    hashed = bcrypt.hashpw(password.encode(), bcrypt.gensalt(12)).decode()
+    users[username] = hashed
+    _save_users(users)
+
+
+def delete_user(username: str) -> bool:
+    users = _load_users()
+    if username not in users:
+        return False
+    del users[username]
+    _save_users(users)
+    return True
+
+
+def list_usernames() -> list[str]:
+    return list(_load_users().keys())
+
 # ---------------------------------------------------------------------------
 # Auth logic
 # ---------------------------------------------------------------------------
@@ -70,4 +95,11 @@ def get_current_user(token: str = Depends(oauth2_scheme)) -> str:
     users = _load_users()
     if username not in users:
         raise exc
+    return username
+
+
+def get_current_admin(username: str = Depends(get_current_user)) -> str:
+    """FastAPI dependency — raises 403 if the caller is not ADMIN."""
+    if username != "ADMIN":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
     return username

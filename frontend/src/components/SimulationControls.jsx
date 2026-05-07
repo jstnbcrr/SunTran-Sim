@@ -469,7 +469,7 @@ function writeScenarios(list) {
 }
 
 // ── Scenario builder panel ────────────────────────────────────────────────────
-function ScenarioPanel({ stops, routes, onSimulationComplete, onSimulateRoute, onResetSimulation }) {
+function ScenarioPanel({ stops, routes, onSimulationComplete, onSimulateRoute, onResetSimulation, onPushToNetwork }) {
   const [proposedRoutes, setProposedRoutes] = useState([]);
   const [proposedStops,  setProposedStops]  = useState([]);
   const [customStops,    setCustomStops]    = useState([]);
@@ -816,13 +816,21 @@ function ScenarioPanel({ stops, routes, onSimulationComplete, onSimulateRoute, o
                     {s.customStops?.length > 0 ? ` · ${s.customStops.length} custom stop${s.customStops.length !== 1 ? "s" : ""}` : ""}
                     {" · "}{new Date(s.savedAt).toLocaleDateString()}
                   </div>
-                  <div style={{ display: "flex", gap: 6 }}>
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                     <button
                       className="btn-primary"
                       style={{ fontSize: 11, padding: "3px 10px" }}
                       onClick={() => handleLoad(s)}
                     >
-                      Load
+                      ✎ Edit Scenario
+                    </button>
+                    <button
+                      className="btn-ghost"
+                      style={{ fontSize: 11, padding: "3px 10px" }}
+                      onClick={() => onPushToNetwork?.(s.proposedRoutes)}
+                      title="Inject these routes into the live route network (flagged as simulated)"
+                    >
+                      ⬆ Push to Network
                     </button>
                     <button
                       className="btn-ghost"
@@ -1142,7 +1150,7 @@ function DemandForecast({ stops, hubs, byRouteStop }) {
 }
 
 // ── Main export ───────────────────────────────────────────────────────────────
-export default function SimulationControls({ stops, routes, hubs, byRouteStop, onAdd, onUpdate, onDelete, onUpload, onSimulationComplete, onSimulateRoute, onResetSimulation }) {
+export default function SimulationControls({ stops, routes, hubs, byRouteStop, onAdd, onUpdate, onDelete, onUpload, onSimulationComplete, onSimulateRoute, onResetSimulation, onPushToNetwork }) {
   const [view, setView] = useState("scenario"); // scenario | network | forecast
 
   return (
@@ -1153,7 +1161,6 @@ export default function SimulationControls({ stops, routes, hubs, byRouteStop, o
         {[
           { id: "scenario", label: "Scenario Planning" },
           { id: "network",  label: "Manage Network"    },
-          { id: "forecast", label: "Demand Forecast"   },
         ].map(t => (
           <button key={t.id} onClick={() => setView(t.id)} style={{
             padding: "6px 18px", fontSize: 13, fontWeight: 700, borderRadius: "6px 6px 0 0",
@@ -1176,10 +1183,8 @@ export default function SimulationControls({ stops, routes, hubs, byRouteStop, o
             onSimulationComplete={onSimulationComplete}
             onSimulateRoute={onSimulateRoute}
             onResetSimulation={onResetSimulation}
+            onPushToNetwork={onPushToNetwork}
           />
-        )}
-        {view === "forecast" && (
-          <DemandForecast stops={stops} hubs={hubs} byRouteStop={byRouteStop} />
         )}
         {view === "network" && (
           <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>

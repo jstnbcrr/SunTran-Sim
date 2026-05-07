@@ -71,3 +71,21 @@ label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px
 .tag-green { background: #14532d; color: var(--success); }
 .tag-red   { background: #7f1d1d; color: var(--danger); }
 .tag-blue  { background: #0a2a50; color: #60a5fa; }
+
+/* ── Recharts tooltip — force white text on dark bg ──────────────────────── */
+.recharts-tooltip-wrapper .recharts-default-tooltip {
+  background: var(--surface2) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius) !important;
+  color: var(--text) !important;
+}
+.recharts-tooltip-wrapper .recharts-default-tooltip .recharts-tooltip-label {
+  color: var(--text) !important;
+  font-weight: 600;
+}
+.recharts-tooltip-wrapper .recharts-default-tooltip .recharts-tooltip-item {
+  color: var(--text) !important;
+}
+.recharts-tooltip-wrapper .recharts-default-tooltip .recharts-tooltip-item-value {
+  color: var(--accent) !important;
+}

@@ -51,9 +51,17 @@ export const getBoardingsByStop  = ()     => api.get("/boardings/by-stop").then(
 export const getBoardingsByRoute = ()     => api.get("/boardings/by-route").then(r => r.data);
 export const getBoardingsByDow   = ()     => api.get("/boardings/by-dow").then(r => r.data);
 export const getBoardingsByMonth      = () => api.get("/boardings/by-month").then(r => r.data);
-export const getBoardingsByRouteDow   = () => api.get("/boardings/by-route-dow").then(r => r.data);
+export const getBoardingsByRouteDow        = () => api.get("/boardings/by-route-dow").then(r => r.data);
+export const getBoardingsByRouteDowMonth   = () => api.get("/boardings/by-route-dow-month").then(r => r.data);
 export const getBoardingsByRouteMonth = () => api.get("/boardings/by-route-month").then(r => r.data);
 export const getBoardingsByRouteStop  = () => api.get("/boardings/by-route-stop").then(r => r.data);
+export const getBoardingsByHour           = () => api.get("/boardings/by-hour").then(r => r.data);
+export const getBoardingsByRouteHour      = () => api.get("/boardings/by-route-hour").then(r => r.data);
+export const getBoardingsByDowHour        = () => api.get("/boardings/by-dow-hour").then(r => r.data);
+export const getBoardingsByRouteDowHour   = () => api.get("/boardings/by-route-dow-hour").then(r => r.data);
+export const getBoardingsByRouteStopHour  = () => api.get("/boardings/by-route-stop-hour").then(r => r.data);
+export const getBoardingsByStopMonth      = () => api.get("/boardings/by-stop-month").then(r => r.data);
+export const getBoardingsByDowMonth       = () => api.get("/boardings/by-dow-month").then(r => r.data);
 export const getCoverageGaps   = ()       => api.get("/simulate/coverage-gaps").then(r => r.data);
 export const getRouteShapes    = ()       => api.get("/route-shapes").then(r => r.data);
 
@@ -169,3 +177,28 @@ export const smartImport = (files, mode = "merge") => {
   files.forEach(f => form.append("files", f));
   return api.post(`/upload/smart?mode=${mode}`, form).then(r => r.data);
 };
+
+// ── Raw vendor import ─────────────────────────────────────────────────────────
+
+export const getRawImportInfo = (fileType) =>
+  api.get(`/data/raw/${fileType}/info`).then(r => r.data);
+
+export const previewRawImport = (fileType, file) => {
+  const form = new FormData();
+  form.append("file", file);
+  return api.post(`/upload/raw/${fileType}/preview`, form).then(r => r.data);
+};
+
+export const uploadRawImport = (fileType, file) => {
+  const form = new FormData();
+  form.append("file", file);
+  return api.post(`/upload/raw/${fileType}`, form).then(r => r.data);
+};
+
+// ── Month management ──────────────────────────────────────────────────────────
+
+export const getBoardingsMonths = () =>
+  api.get("/boardings/months").then(r => r.data);
+
+export const deleteBoardingsMonth = (month) =>
+  api.delete(`/boardings/month/${month}`).then(r => r.data);

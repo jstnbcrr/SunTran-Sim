@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useCallback } from "react";
+import React, { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import L from "leaflet";
 import {
   MapContainer,
@@ -37,7 +37,7 @@ const ST_GEORGE_ZOOM   = 13;
 const WALKING_RADIUS_M = 402.34; // 0.25 miles in meters
 
 // ─── Coordinate validation ─────────────────────────────────────────────────────
-// Leaflet requires [lat, lng]. GeoJSON APIs return [lng, lat].
+// Leaflet requires [lat, lng]. Mapbox/GeoJSON APIs return [lng, lat].
 // This utility catches swapped coords before they reach Leaflet.
 function isValidLatLng(lat, lng) {
   return lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180;
@@ -69,51 +69,46 @@ function getBounds(coords) {
   return [[minLat, minLng], [maxLat, maxLng]];
 }
 
-// ─── Routing (OSRM) ────────────────────────────────────────────────────────────
+// ─── Routing (Mapbox Directions) ───────────────────────────────────────────────
 const segmentCache         = new Map(); // [lat,lng] coords per stop pair
 const segmentDurationCache = new Map(); // travel seconds per stop pair
 
-// Fetches a street-snapped path between two stops via OSRM.
-// Retries once on failure; throws if both attempts fail (no straight-line fallback).
 async function getRoadSegment(start, end) {
-  // start/end are [lat, lng] — OSRM needs lng,lat
+  // start/end are [lat, lng] — Mapbox needs lon,lat
   const key = `${start[0]},${start[1]}-${end[0]},${end[1]}`;
   if (segmentCache.has(key)) return segmentCache.get(key);
 
-  const url =
-    `https://router.project-osrm.org/route/v1/driving/` +
-    `${start[1]},${start[0]};${end[1]},${end[0]}` +
-    `?overview=full&geometries=geojson`;
+  try {
+    const token = import.meta.env.VITE_MAPBOX_TOKEN;
+    const url =
+      `https://api.mapbox.com/directions/v5/mapbox/driving/` +
+      `${start[1]},${start[0]};${end[1]},${end[0]}` +
+      `?geometries=geojson&access_token=${token}`;
 
-  let lastErr;
-  for (let attempt = 0; attempt < 2; attempt++) {
-    try {
-      const res = await fetch(url);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      if (data.routes?.length > 0) {
-        // OSRM returns [lng, lat] — convert to [lat, lng] for Leaflet
-        const coords = validateCoords(
-          data.routes[0].geometry.coordinates.map(([lng, lat]) => [lat, lng]),
-          `OSRM ${start} → ${end}`
-        );
-        if (coords.length >= 2) {
-          segmentCache.set(key, coords);
-          segmentDurationCache.set(key, data.routes[0].duration ?? 0); // seconds
-          return coords;
-        }
+    const response = await fetch(url);
+    const data     = await response.json();
+
+    if (data.routes?.length > 0) {
+      const mapboxRoute = data.routes[0];
+      // Mapbox returns [lng, lat] — convert every coord to [lat, lng] for Leaflet
+      const coords = validateCoords(
+        mapboxRoute.geometry.coordinates.map(([lng, lat]) => [lat, lng]),
+        `Mapbox ${start} → ${end}`
+      );
+      if (coords.length >= 2) {
+        segmentCache.set(key, coords);
+        segmentDurationCache.set(key, mapboxRoute.duration ?? 0); // seconds
+        return coords;
       }
-      lastErr = new Error("No route returned by OSRM");
-    } catch (err) {
-      lastErr = err;
     }
-  }
-  throw lastErr ?? new Error(`OSRM routing failed for segment [${start}] → [${end}]`);
+  } catch (_) {}
+
+  return [start, end]; // fallback: straight line
 }
 
 async function buildRoadRoute(stopCoords) {
   if (stopCoords.length < 2) return stopCoords;
-  // Sequential — avoids OSRM rate-limiting from simultaneous bursts
+  // Sequential — avoids Mapbox rate-limiting from simultaneous bursts
   let fullRoute = [];
   for (let i = 0; i < stopCoords.length - 1; i++) {
     const segment = await getRoadSegment(stopCoords[i], stopCoords[i + 1]);
@@ -123,7 +118,7 @@ async function buildRoadRoute(stopCoords) {
 }
 
 // ─── Travel time stats ─────────────────────────────────────────────────────────
-// Reads cached OSRM durations after buildRoadRoute has populated them.
+// Reads cached Mapbox durations after buildRoadRoute has populated them.
 // Returns null if no duration data is available yet.
 function getRouteTravelStats(stopCoords) {
   if (!stopCoords || stopCoords.length < 2) return null;
@@ -204,9 +199,11 @@ function buildBoardingsLookup(boardingsByStop) {
   const lookup = {};
   if (!boardingsByStop?.length) return lookup;
   boardingsByStop.forEach(row => {
-    const key = (row.address || "").trim().toLowerCase();
+    // Key by stop_id (preferred) with stop_name as fallback
+    const key = row.stop_id != null ? String(row.stop_id).trim() : (row.address || row.stop_name || "").trim().toLowerCase();
+    if (!key) return;
     const val = parseFloat(row.avg_daily_in) || 0;
-    if (!lookup[key] || val > lookup[key]) lookup[key] = val;
+    lookup[key] = (lookup[key] || 0) + val;
   });
   return lookup;
 }
@@ -238,6 +235,10 @@ export default function MapView({
   showCoverage,
   onToggleCoverage,
   boardingsByStop,
+  boardingsStopMonth,
+  monthFilter,
+  onMonthFilterChange,
+  availableMonths,
 }) {
   const mapRef = useRef(null);
   const [invalidateTrigger, setInvalidateTrigger] = useState(0);
@@ -245,7 +246,25 @@ export default function MapView({
   const [activeRouteId,  setActiveRouteId]  = useState(null);
   const [showHeatmap,    setShowHeatmap]    = useState(true);
 
-  const boardingsLookup = buildBoardingsLookup(boardingsByStop);
+  // When month filter is active, derive per-stop boardings from byStopMonth;
+  // otherwise use the precomputed all-time byStop data.
+  const effectiveBoardingsData = useMemo(() => {
+    const active = monthFilter?.length > 0;
+    if (!active || !boardingsStopMonth?.length) return boardingsByStop;
+    // Sum avg_daily_in across selected months per stop address
+    const filtered = boardingsStopMonth.filter(r => monthFilter.includes(r.month));
+    // Group by stop_id, summing avg_daily_in
+    const agg = {};
+    filtered.forEach(r => {
+      const key = r.stop_id != null ? String(r.stop_id).trim() : "";
+      if (!key) return;
+      if (!agg[key]) agg[key] = { stop_id: r.stop_id, avg_daily_in: 0 };
+      agg[key].avg_daily_in += parseFloat(r.avg_daily_in) || 0;
+    });
+    return Object.values(agg);
+  }, [monthFilter, boardingsByStop, boardingsStopMonth]);
+
+  const boardingsLookup = buildBoardingsLookup(effectiveBoardingsData);
   const maxBoarding = Math.max(...Object.values(boardingsLookup), 1);
 
   const {
@@ -263,22 +282,18 @@ export default function MapView({
   const simRouteData = activeSimulationRouteId ? simulatedRoutes[activeSimulationRouteId] : null;
   const simRouteLine = simRouteData ? buildRoutePolylines([simRouteData], allStopsForSim)[0] : null;
 
-  const [showHubs,          setShowHubs]          = useState(true);
-  const [roadCoords,        setRoadCoords]        = useState({});
-  const [shapesLoaded,      setShapesLoaded]      = useState(false);
-  const [simRoadCoords,     setSimRoadCoords]     = useState(null);
-  const [simRoutingError,   setSimRoutingError]   = useState(null);
-  const [origSimRoadCoords, setOrigSimRoadCoords] = useState(null);
-  const [routeOsrmCoords,   setRouteOsrmCoords]  = useState({}); // OSRM coords for original routes without GTFS shapes
-  const [routeErrors,       setRouteErrors]      = useState({}); // route_id → true when OSRM fails
-  const [routeStats,        setRouteStats]        = useState({}); // { [routeId]: stats }
+  const [showHubs,      setShowHubs]      = useState(true);
+  const [roadCoords,    setRoadCoords]    = useState({});
+  const [simRoadCoords, setSimRoadCoords] = useState(null);
+  const [routeStats,    setRouteStats]    = useState({}); // { [routeId]: stats }
 
   // ── Layer visibility helpers ──────────────────────────────────────────────────
 
   // Show only the chosen route and zoom to its bounds.
   const showRoute = (routeId) => {
     setActiveRouteId(routeId);
-    const coords = roadCoords[routeId] || routeOsrmCoords[routeId];
+    const coords = roadCoords[routeId]
+      || routeLines.find(r => r.route_id === routeId)?.coords;
     const bounds = getBounds(coords);
     if (bounds && mapRef.current) {
       setTimeout(() => mapRef.current.fitBounds(bounds, { padding: [50, 50] }), 0);
@@ -299,51 +314,14 @@ export default function MapView({
     setInvalidateTrigger(v => v + 1);
   };
 
-  // ── GTFS shape loading ────────────────────────────────────────────────────────
+  // ── GTFS shape loading (replaces Mapbox road routing) ─────────────────────────
 
   useEffect(() => {
-    getRouteShapes()
-      .then(shapes => {
-        if (!shapes || Object.keys(shapes).length === 0) {
-          console.warn("[SunTran] /api/route-shapes returned empty — polylines will use straight-line stop coords as fallback");
-          setRoadCoords({});
-        } else {
-          setRoadCoords(shapes);
-        }
-      })
-      .catch(err => {
-        console.error(
-          "[SunTran] Failed to load route shapes — polylines will use straight-line fallback:",
-          err?.response?.status ?? err?.message ?? err
-        );
-        setRoadCoords({});
-      })
-      .finally(() => {
-        setShapesLoaded(true);
-      });
+    getRouteShapes().then(shapes => {
+      if (!shapes) return;
+      setRoadCoords(shapes);
+    }).catch(() => {});
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // ── OSRM routing for original routes without GTFS shapes ─────────────────────
-  // Runs after shapes load. Any route that didn't get a GTFS shape is routed
-  // through OSRM. Errors are surfaced per-route — no straight-line fallback.
-  useEffect(() => {
-    if (!shapesLoaded) return;
-    routeLines
-      .filter(r =>
-        !roadCoords[r.route_id] &&
-        !routeOsrmCoords[r.route_id] &&
-        !routeErrors[r.route_id] &&
-        r.coords.length >= 2
-      )
-      .forEach(route => {
-        buildRoadRoute(route.coords)
-          .then(coords => setRouteOsrmCoords(prev => ({ ...prev, [route.route_id]: coords })))
-          .catch(err => {
-            console.error(`[SunTran] OSRM routing failed for route "${route.route_id}":`, err);
-            setRouteErrors(prev => ({ ...prev, [route.route_id]: true }));
-          });
-      });
-  }, [shapesLoaded, roadCoords, routeLines.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Coordinate-based key: re-run whenever actual lat/lng values change, not just stop IDs.
   // This catches custom stops whose coords enter allStopsForSim after the stop ID was selected.
@@ -352,56 +330,15 @@ export default function MapView({
   useEffect(() => {
     if (!simRouteLine || simRouteLine.coords.length < 2) {
       setSimRoadCoords(null);
-      setSimRoutingError(null);
       return;
     }
     const coords = simRouteLine.coords; // capture current coords for this effect run
     let cancelled = false;
-    setSimRoutingError(null);
-    buildRoadRoute(coords)
-      .then(result => {
-        if (!cancelled) setSimRoadCoords(result);
-      })
-      .catch(err => {
-        if (!cancelled) {
-          console.error("[SunTran] OSRM routing failed for simulated route:", err);
-          setSimRoadCoords(null);
-          setSimRoutingError("Street routing failed — check your connection and try again.");
-        }
-      });
+    buildRoadRoute(coords).then(result => {
+      if (!cancelled) setSimRoadCoords(result);
+    });
     return () => { cancelled = true; };
   }, [simCoordsKey]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // ── OSRM routing for the original route when it's the simulation target ───────
-  // Gives consistent road-following geometry for both the original and modified route.
-  const origRouteForSim = activeSimulationRouteId
-    ? routeLines.find(r => r.route_id === activeSimulationRouteId)
-    : null;
-  const origRouteCoordsKey = origRouteForSim?.coords.map(c => c.join(",")).join("|") ?? "";
-
-  useEffect(() => {
-    if (!activeSimulationRouteId || !origRouteForSim || origRouteForSim.coords.length < 2) {
-      setOrigSimRoadCoords(null);
-      return;
-    }
-    // Prefer GTFS shapes if already loaded — they're road-following and avoid a redundant fetch
-    if (roadCoords[activeSimulationRouteId]) {
-      setOrigSimRoadCoords(roadCoords[activeSimulationRouteId]);
-      return;
-    }
-    let cancelled = false;
-    buildRoadRoute(origRouteForSim.coords)
-      .then(result => {
-        if (!cancelled) setOrigSimRoadCoords(result);
-      })
-      .catch(err => {
-        if (!cancelled) {
-          console.error("[SunTran] OSRM routing failed for original route:", err);
-          setOrigSimRoadCoords(null);
-        }
-      });
-    return () => { cancelled = true; };
-  }, [origRouteCoordsKey, activeSimulationRouteId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Derived render values ─────────────────────────────────────────────────────
 
@@ -481,11 +418,9 @@ export default function MapView({
                       }}>
                         ~{stats.totalMinutes} min
                       </span>
-                    ) : routeErrors[r.route_id] ? (
-                      <span style={{ fontSize: 10, color: "#dc2626", fontWeight: 600 }}>routing failed</span>
                     ) : (
                       <span className="stop-count">
-                        {roadCoords[r.route_id] || routeOsrmCoords[r.route_id] ? r.stop_ids.length : "…"} stops
+                        {roadCoords[r.route_id] ? r.stop_ids.length : "…"} stops
                       </span>
                     )}
                   </div>
@@ -529,7 +464,7 @@ export default function MapView({
                   )}
 
                   {/* Loading state — route selected but stats not yet available */}
-                  {isActive && !stats && !roadCoords[r.route_id] && !routeOsrmCoords[r.route_id] && !routeErrors[r.route_id] && (
+                  {isActive && !stats && roadCoords[r.route_id] === undefined && (
                     <div style={{
                       margin: "2px 0 4px", padding: "8px 12px",
                       background: "rgba(255,255,255,0.03)",
@@ -570,6 +505,52 @@ export default function MapView({
                 )}
               </div>
             </>
+          )}
+
+          {/* ── Month filter ── */}
+          {availableMonths?.length > 0 && (
+            <div style={{ marginTop: 12 }}>
+              <hr className="divider" style={{ marginBottom: 8 }} />
+              <div className="panel-title" style={{ marginBottom: 6 }}>Period filter</div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                <button
+                  onClick={() => onMonthFilterChange?.([])}
+                  style={{
+                    fontSize: 10, padding: "2px 7px", borderRadius: 10, cursor: "pointer", border: "1px solid var(--border)",
+                    background: !monthFilter?.length ? "var(--accent)" : "transparent",
+                    color: !monthFilter?.length ? "#fff" : "var(--muted)",
+                  }}
+                >
+                  All time
+                </button>
+                {availableMonths.map(m => {
+                  const active = monthFilter?.includes(m);
+                  return (
+                    <button
+                      key={m}
+                      onClick={() => {
+                        if (!onMonthFilterChange) return;
+                        onMonthFilterChange(
+                          active ? monthFilter.filter(x => x !== m) : [...(monthFilter || []), m]
+                        );
+                      }}
+                      style={{
+                        fontSize: 10, padding: "2px 7px", borderRadius: 10, cursor: "pointer", border: "1px solid var(--border)",
+                        background: active ? "var(--accent)" : "transparent",
+                        color: active ? "#fff" : "var(--muted)",
+                      }}
+                    >
+                      {m}
+                    </button>
+                  );
+                })}
+              </div>
+              {monthFilter?.length > 0 && (
+                <div style={{ fontSize: 10, color: "var(--muted)", marginTop: 4 }}>
+                  Heatmap showing {monthFilter.length} month{monthFilter.length > 1 ? "s" : ""}
+                </div>
+              )}
+            </div>
           )}
 
           {/* ── Map Layers (bottom) ── */}
@@ -657,20 +638,6 @@ export default function MapView({
           </button>
         )}
 
-        {simRoutingError && (
-          <div style={{
-            position: "absolute", top: 12, left: "50%", transform: "translateX(-50%)",
-            zIndex: 1000, background: "#3b0000", border: "1px solid #dc2626",
-            color: "#fca5a5", borderRadius: 7, padding: "8px 14px",
-            fontSize: 12, fontWeight: 600, pointerEvents: "none",
-            display: "flex", alignItems: "center", gap: 8,
-            boxShadow: "0 2px 8px rgba(0,0,0,0.5)",
-          }}>
-            <span style={{ color: "#dc2626", fontSize: 14 }}>⚠</span>
-            {simRoutingError}
-          </div>
-        )}
-
         <MapContainer
           center={ST_GEORGE_CENTER}
           zoom={ST_GEORGE_ZOOM}
@@ -688,16 +655,13 @@ export default function MapView({
               Active route: heavier weight (8), full opacity, glowing color.
               Inactive routes: hidden when a route is selected.
               Route being simulated: rendered as gray dashed (original baseline). */}
-          {shapesLoaded && routeLines.map(route => {
+          {routeLines.map(route => {
             const isActive   = route.route_id === activeRouteId;
             const isSimTarget = route.route_id === activeSimulationRouteId;
             const isVisible  = !activeRouteId || isActive;
-            if (!isVisible) return null;
+            if (!isVisible || route.coords.length < 2) return null;
 
-            const positions = isSimTarget
-              ? (origSimRoadCoords || roadCoords[route.route_id] || routeOsrmCoords[route.route_id] || null)
-              : (roadCoords[route.route_id] || routeOsrmCoords[route.route_id] || null);
-            if (!positions || positions.length < 2) return null;
+            const positions = roadCoords[route.route_id] || route.coords;
             return (
               <Polyline
                 key={route.route_id}
@@ -718,11 +682,11 @@ export default function MapView({
             );
           })}
 
-          {/* ── Simulated route overlay — only render once OSRM coords are ready ── */}
-          {simRouteLine && simRoadCoords && simRoadCoords.length > 1 && (
+          {/* ── Simulated route overlay — solid colored line over the gray dashed original ── */}
+          {simRouteLine && simRouteLine.coords.length > 1 && (
             <Polyline
               key={`sim-${simRouteLine.route_id}`}
-              positions={simRoadCoords}
+              positions={simRoadCoords || simRouteLine.coords}
               pathOptions={{ color: simRouteLine.color || "#a78bfa", weight: 6, opacity: 1 }}
             >
               <Popup>
@@ -769,9 +733,7 @@ export default function MapView({
           {stops
             .filter(stop => !activeStopIds || activeStopIds.has(stop.stop_id))
             .map(stop => {
-              const addrKey = (stop.address || "").trim().toLowerCase();
-              const nameKey = (stop.stop_name || "").trim().toLowerCase();
-              const avgDaily = boardingsLookup[addrKey] || boardingsLookup[nameKey] || 0;
+              const avgDaily = boardingsLookup[String(stop.stop_id).trim()] || 0;
               const { fill, opacity } = showHeatmap
                 ? ridershipColor(avgDaily, maxBoarding)
                 : { fill: "#e6c928", opacity: 1 };

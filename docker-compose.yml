@@ -17,12 +17,13 @@ services:
       context: ./frontend
     container_name: suntran-frontend
     ports:
-      - "0.0.0.0:5173:5173"
+      - "0.0.0.0:5176:5173"
     volumes:
       - ./frontend:/app
       - /app/node_modules
     environment:
       - VITE_API_URL=http://localhost:8000
+      - VITE_BACKEND_URL=http://backend:8000
     depends_on:
       - backend
     restart: unless-stopped

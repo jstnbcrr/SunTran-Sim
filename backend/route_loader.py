@@ -38,12 +38,15 @@ def load_ridership(path: Optional[str] = None) -> pd.DataFrame:
 
 
 def load_employment_hubs(path: Optional[str] = None) -> pd.DataFrame:
-    """Load employment hubs CSV. Columns: hub_name, latitude, longitude, estimated_workers."""
+    """Load employment hubs CSV. Columns: hub_name, latitude, longitude."""
     path = path or os.path.join(DATA_DIR, "employment_hubs.csv")
     df = pd.read_csv(path)
     df["latitude"] = df["latitude"].astype(float)
     df["longitude"] = df["longitude"].astype(float)
-    df["estimated_workers"] = df["estimated_workers"].astype(int)
+    if "estimated_workers" not in df.columns:
+        df["estimated_workers"] = 0
+    else:
+        df["estimated_workers"] = df["estimated_workers"].fillna(0).astype(int)
     return df
 
 

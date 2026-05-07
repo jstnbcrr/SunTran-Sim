@@ -1,23 +1,21 @@
 import React, { useState } from "react";
 
 const SECTIONS = [
-  { id: "overview",   label: "Overview" },
-  { id: "map",        label: "Map Tab" },
-  { id: "simulate",   label: "Simulate Tab" },
-  { id: "metrics",    label: "Metrics Tab" },
-  { id: "ridership",  label: "Ridership Tab" },
-  { id: "upload",     label: "Uploading Data" },
-  { id: "params",     label: "Simulation Parameters" },
-  { id: "csvschema",  label: "CSV Schemas" },
+  { id: "quickstart", label: "Quick Start" },
+  { id: "map",        label: "Map" },
+  { id: "ridership",  label: "Ridership" },
+  { id: "import",     label: "Importing Data" },
+  { id: "simulate",   label: "Simulate" },
+  { id: "metrics",    label: "Metrics" },
   { id: "faq",        label: "FAQ" },
 ];
 
 function Section({ id, title, children }) {
   return (
-    <div id={id} style={{ marginBottom: 36 }}>
+    <div id={id} style={{ marginBottom: 40 }}>
       <div style={{
-        fontSize: 17, fontWeight: 700, color: "var(--accent)",
-        borderBottom: "2px solid var(--border)", paddingBottom: 8, marginBottom: 16,
+        fontSize: 18, fontWeight: 700, color: "var(--accent)",
+        borderBottom: "2px solid var(--border)", paddingBottom: 8, marginBottom: 18,
       }}>
         {title}
       </div>
@@ -28,7 +26,7 @@ function Section({ id, title, children }) {
 
 function SubSection({ title, children }) {
   return (
-    <div style={{ marginBottom: 20 }}>
+    <div style={{ marginBottom: 22 }}>
       <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text)", marginBottom: 8 }}>
         {title}
       </div>
@@ -39,16 +37,16 @@ function SubSection({ title, children }) {
 
 function Step({ n, children }) {
   return (
-    <div style={{ display: "flex", gap: 12, marginBottom: 10, alignItems: "flex-start" }}>
+    <div style={{ display: "flex", gap: 12, marginBottom: 12, alignItems: "flex-start" }}>
       <div style={{
-        flexShrink: 0, width: 24, height: 24, borderRadius: "50%",
+        flexShrink: 0, width: 26, height: 26, borderRadius: "50%",
         background: "var(--accent)", color: "#001830",
         display: "flex", alignItems: "center", justifyContent: "center",
         fontSize: 12, fontWeight: 700,
       }}>
         {n}
       </div>
-      <div style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.6, paddingTop: 3 }}>
+      <div style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.7, paddingTop: 4 }}>
         {children}
       </div>
     </div>
@@ -58,11 +56,24 @@ function Step({ n, children }) {
 function Tip({ children }) {
   return (
     <div style={{
-      background: "rgba(230,201,40,0.08)", border: "1px solid rgba(230,201,40,0.25)",
+      background: "rgba(230,201,40,0.08)", border: "1px solid rgba(230,201,40,0.3)",
       borderRadius: "var(--radius)", padding: "10px 14px",
-      fontSize: 12, color: "var(--text)", lineHeight: 1.6, marginTop: 8,
+      fontSize: 12, color: "var(--text)", lineHeight: 1.7, marginTop: 10,
     }}>
-      <span style={{ color: "var(--accent)", fontWeight: 700 }}>Tip: </span>
+      <span style={{ color: "var(--accent)", fontWeight: 700 }}>💡 Tip: </span>
+      {children}
+    </div>
+  );
+}
+
+function Warning({ children }) {
+  return (
+    <div style={{
+      background: "rgba(239,68,68,0.07)", border: "1px solid rgba(239,68,68,0.25)",
+      borderRadius: "var(--radius)", padding: "10px 14px",
+      fontSize: 12, color: "var(--text)", lineHeight: 1.7, marginTop: 10,
+    }}>
+      <span style={{ color: "#ef4444", fontWeight: 700 }}>⚠ Watch out: </span>
       {children}
     </div>
   );
@@ -73,9 +84,9 @@ function Note({ children }) {
     <div style={{
       background: "rgba(55,136,216,0.08)", border: "1px solid rgba(55,136,216,0.25)",
       borderRadius: "var(--radius)", padding: "10px 14px",
-      fontSize: 12, color: "var(--text)", lineHeight: 1.6, marginTop: 8,
+      fontSize: 12, color: "var(--text)", lineHeight: 1.7, marginTop: 10,
     }}>
-      <span style={{ color: "var(--accent2)", fontWeight: 700 }}>Note: </span>
+      <span style={{ color: "var(--accent2)", fontWeight: 700 }}>📌 Note: </span>
       {children}
     </div>
   );
@@ -94,12 +105,32 @@ function Tag({ children, color }) {
   );
 }
 
+function WorkflowCard({ number, title, desc, tab }) {
+  return (
+    <div className="card" style={{ padding: "14px 16px", display: "flex", gap: 14, alignItems: "flex-start" }}>
+      <div style={{
+        flexShrink: 0, width: 32, height: 32, borderRadius: "50%",
+        background: "var(--accent)", color: "#001830",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        fontSize: 14, fontWeight: 700,
+      }}>
+        {number}
+      </div>
+      <div>
+        <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text)", marginBottom: 3 }}>
+          {title}
+          {tab && <span style={{ fontSize: 11, fontWeight: 400, color: "var(--muted)", marginLeft: 8 }}>→ {tab} tab</span>}
+        </div>
+        <div style={{ fontSize: 12, color: "var(--muted)", lineHeight: 1.5 }}>{desc}</div>
+      </div>
+    </div>
+  );
+}
+
 function FaqItem({ question, children }) {
   const [open, setOpen] = useState(false);
   return (
-    <div style={{
-      borderBottom: "1px solid var(--border)", paddingBottom: 12, marginBottom: 12,
-    }}>
+    <div style={{ borderBottom: "1px solid var(--border)", paddingBottom: 12, marginBottom: 12 }}>
       <button
         onClick={() => setOpen(o => !o)}
         style={{
@@ -117,10 +148,7 @@ function FaqItem({ question, children }) {
         }}>▶</span>
       </button>
       {open && (
-        <div style={{
-          fontSize: 12, color: "var(--muted)", lineHeight: 1.8,
-          paddingTop: 8, paddingLeft: 4,
-        }}>
+        <div style={{ fontSize: 12, color: "var(--muted)", lineHeight: 1.8, paddingTop: 8, paddingLeft: 4 }}>
           {children}
         </div>
       )}
@@ -128,54 +156,8 @@ function FaqItem({ question, children }) {
   );
 }
 
-function SchemaTable({ columns }) {
-  return (
-    <table style={{ marginTop: 8 }}>
-      <thead>
-        <tr>
-          <th>Column</th>
-          <th>Type</th>
-          <th>Description</th>
-        </tr>
-      </thead>
-      <tbody>
-        {columns.map(([col, type, desc]) => (
-          <tr key={col}>
-            <td><code style={{ fontSize: 11, color: "var(--accent)" }}>{col}</code></td>
-            <td style={{ color: "var(--muted)", fontSize: 11 }}>{type}</td>
-            <td style={{ fontSize: 12 }}>{desc}</td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  );
-}
-
-function ParamTable({ rows }) {
-  return (
-    <table style={{ marginTop: 8 }}>
-      <thead>
-        <tr>
-          <th>Parameter</th>
-          <th>Default</th>
-          <th>What it controls</th>
-        </tr>
-      </thead>
-      <tbody>
-        {rows.map(([param, def, desc]) => (
-          <tr key={param}>
-            <td style={{ fontWeight: 600, fontSize: 12 }}>{param}</td>
-            <td><Tag>{def}</Tag></td>
-            <td style={{ fontSize: 12 }}>{desc}</td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  );
-}
-
 export default function InstructionsPanel() {
-  const [activeSection, setActiveSection] = useState("overview");
+  const [activeSection, setActiveSection] = useState("quickstart");
 
   const scrollTo = (id) => {
     setActiveSection(id);
@@ -185,9 +167,9 @@ export default function InstructionsPanel() {
   return (
     <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
 
-      {/* Sidebar TOC */}
+      {/* Sidebar */}
       <div style={{
-        width: 200, flexShrink: 0, padding: "20px 12px",
+        width: 190, flexShrink: 0, padding: "20px 12px",
         borderRight: "1px solid var(--border)", overflowY: "auto",
         background: "var(--surface)",
       }}>
@@ -215,387 +197,326 @@ export default function InstructionsPanel() {
         ))}
       </div>
 
-      {/* Main content */}
-      <div style={{ flex: 1, overflowY: "auto", padding: "28px 40px", maxWidth: 860 }}>
+      {/* Content */}
+      <div style={{ flex: 1, overflowY: "auto", padding: "28px 44px", maxWidth: 820 }}>
 
-        {/* ── Overview ── */}
-        <Section id="overview" title="Overview">
-          <p style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.8, marginBottom: 12 }}>
-            The <strong>SunTran Transit Simulation Tool</strong> is a research platform for analyzing
-            the SunTran bus network in St. George, Utah. It lets you visualize existing routes,
-            propose changes, and measure how those changes affect rider access to employment hubs
-            and essential destinations — all without touching the live system.
+        {/* ── Quick Start ── */}
+        <Section id="quickstart" title="Quick Start">
+          <p style={{ fontSize: 13, color: "var(--muted)", lineHeight: 1.8, marginBottom: 20 }}>
+            There are two things you'll do in this tool — <strong>analyze historical ridership</strong> and
+            <strong> test route changes</strong>. Here's how to get started with each.
           </p>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 16 }}>
-            {[
-              ["Map", "Visualize routes, stops, coverage, and employment hubs on an interactive map."],
-              ["Simulate", "Propose new or modified routes and preview their network impact."],
-              ["Metrics", "Compare accessibility statistics between the current and proposed network."],
-              ["Ridership", "Explore historical boarding data by stop, route, day, and month."],
-            ].map(([tab, desc]) => (
-              <div key={tab} className="card" style={{ padding: "12px 14px" }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: "var(--accent)", marginBottom: 4 }}>{tab}</div>
-                <div style={{ fontSize: 12, color: "var(--muted)", lineHeight: 1.5 }}>{desc}</div>
-              </div>
-            ))}
-          </div>
+
+          <SubSection title="📊 I want to explore ridership data">
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <WorkflowCard number="1" title="Upload your data" tab="Import" desc={'Go to the Import tab. Upload your monthly APC vendor CSV under \"Avg Passenger Counts.\" New months merge in automatically — do this each month.'} />
+              <WorkflowCard number="2" title="Explore the dashboard" tab="Ridership" desc="Open the Ridership tab. You'll see boardings by route, stop, day of week, and monthly trends. Use the period pills at the top to filter to specific months." />
+              <WorkflowCard number="3" title="Filter the map too" tab="Map" desc="The same period filter appears on the Map tab. Select a month to see the ridership heatmap for just that period." />
+            </div>
+          </SubSection>
+
+          <SubSection title="🗺 I want to test a route change">
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <WorkflowCard number="1" title="Look at the current network" tab="Map" desc="Use the Map tab to understand existing coverage. Toggle the 0.25-mile coverage circles to spot gaps. Click any stop to see its boarding volume." />
+              <WorkflowCard number="2" title="Build your proposal" tab="Simulate" desc={'Open the Simulate tab. Find a route and click Edit, or click + Add Route. Adjust the stop list and click "Simulate This Route" to preview it on the map.'} />
+              <WorkflowCard number="3" title="Run the comparison" tab="Simulate" desc={'Click "Run Full Simulation." The tool calculates how your change affects travel times and access to jobs, then opens the Metrics tab with the results.'} />
+              <WorkflowCard number="4" title="Export your findings" tab="Metrics" desc="Click Export CSV to download the results. Run multiple scenarios and compare the exports." />
+            </div>
+          </SubSection>
+
+          <Tip>After uploading new data, click <strong>↺ Refresh</strong> in the top-right to reload all charts.</Tip>
         </Section>
 
-        {/* ── Map Tab ── */}
+        {/* ── Map ── */}
         <Section id="map" title="Map Tab">
-          <SubSection title="Map elements">
+          <p style={{ fontSize: 13, color: "var(--muted)", lineHeight: 1.8, marginBottom: 16 }}>
+            The Map is your starting point — it shows the current network and lets you visualize
+            ridership patterns and coverage gaps before proposing changes.
+          </p>
+
+          <SubSection title="What you're looking at">
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {[
-                ["Blue circles", "Bus stops. Size reflects relative boarding volume when ridership data is loaded."],
-                ["Colored lines", "Bus routes. Each route has a distinct color matching the legend."],
-                ["Star markers", "Employment hubs — hospitals, universities, major employers."],
-                ["Shaded circles", "0.25-mile walking-radius coverage around each stop (toggle on/off)."],
-              ].map(([label, desc]) => (
-                <div key={label} style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: "var(--accent2)", minWidth: 120, flexShrink: 0 }}>{label}</div>
+                ["🔵 Colored circles",  "Bus stops. Size and color show relative boarding volume — blue = low, yellow = medium, red = high."],
+                ["━ Colored lines",     "Bus routes. Each route has its own color from the sidebar legend."],
+                ["⭐ Gold stars",       "Employment hubs — hospitals, universities, major employers used in the simulation."],
+                ["◯ Shaded rings",     "0.25-mile walking radius around each stop. Turn on in Map Layers to see coverage gaps."],
+                ["╌ Dashed lines",     "Your proposed route from the Simulate tab, shown as a live preview overlay."],
+              ].map(([icon, desc]) => (
+                <div key={icon} style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: "var(--accent2)", minWidth: 140, flexShrink: 0 }}>{icon}</div>
                   <div style={{ fontSize: 12, color: "var(--muted)", lineHeight: 1.5 }}>{desc}</div>
                 </div>
               ))}
             </div>
           </SubSection>
 
-          <SubSection title="Controls">
-            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              <div style={{ fontSize: 12, lineHeight: 1.7 }}>
-                <Tag>Toggle Coverage</Tag> — shows or hides the 0.25-mile walking circles around every stop.
-                Use this to identify neighborhoods that lack transit access.
-              </div>
-              <div style={{ fontSize: 12, lineHeight: 1.7 }}>
-                Proposed routes (built in the Simulate tab) appear as <strong>dashed lines</strong> overlaid
-                on the current network so you can compare them side-by-side.
-              </div>
+          <SubSection title="Filtering by month">
+            <div style={{ fontSize: 13, lineHeight: 1.7 }}>
+              Once you've imported multiple months of data, a <strong>Period filter</strong> appears
+              at the bottom of the sidebar. Click any month pill to show the ridership heatmap for
+              just that period. Select multiple months to combine them.
+              Click <Tag>All time</Tag> to go back to the full dataset.
             </div>
+            <Note>The period filter is shared with the Ridership tab — changing it on the map also changes it in Ridership, and vice versa.</Note>
           </SubSection>
 
-          <Tip>Click any stop marker to see its Stop ID and name. This ID is what you'll use when building proposed routes.</Tip>
+          <Tip>Click any stop marker to see its stop ID and average daily boardings. You'll need the stop ID when building a proposed route in the Simulate tab.</Tip>
         </Section>
 
-        {/* ── Simulate Tab ── */}
-        <Section id="simulate" title="Simulate Tab">
-          <p style={{ fontSize: 13, color: "var(--muted)", lineHeight: 1.7, marginBottom: 16 }}>
-            The Simulate tab is the core research workflow. It has two panels: the left panel manages
-            the network and lets you propose routes; the right panel runs the full simulation and
-            shows a live map preview.
+        {/* ── Ridership ── */}
+        <Section id="ridership" title="Ridership Tab">
+          <p style={{ fontSize: 13, color: "var(--muted)", lineHeight: 1.8, marginBottom: 16 }}>
+            The Ridership tab is a full analytics dashboard. Every chart updates instantly when you
+            change the period filter at the top.
           </p>
 
-          <SubSection title="Proposing a route change">
-            <Step n={1}>In the <strong>left panel</strong>, find the route you want to modify and click <Tag>Edit</Tag>, or click <Tag>+ Add Route</Tag> to create a new one.</Step>
-            <Step n={2}>Use the stop selector to build an ordered list of stops. You can add stops from the dropdown, drag to reorder, or remove them by clicking the × tag.</Step>
-            <Step n={3}>Click <Tag>Simulate This Route</Tag> to stage the proposal. The map will immediately preview the new path.</Step>
-            <Step n={4}>Repeat for additional routes if you want to test a multi-route scenario.</Step>
-            <Step n={5}>When ready, click <Tag>Run Full Simulation</Tag>. Results appear in the <strong>Metrics</strong> tab automatically.</Step>
-          </SubSection>
-
-          <SubSection title="Adding custom stops">
-            <div style={{ fontSize: 12, lineHeight: 1.7 }}>
-              If your proposed route needs a stop that doesn't exist yet, use the <strong>Custom Stops</strong>
-              section to enter a latitude/longitude and give it a temporary ID. Custom stops are only
-              used for the simulation — they are not saved to the database.
+          <SubSection title="What's on the dashboard">
+            <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
+              {[
+                ["System Summary",     "Total boardings, busiest route, busiest stop, and peak day — all at a glance. Click any card for a breakdown."],
+                ["Route Scorecard",    "One row per route showing boardings, 3-month trend, year-over-year change, and weekday vs. weekend split. Click a row to expand stop-level detail."],
+                ["Route × Day Heatmap","Color matrix showing which routes are busiest on which days of the week."],
+                ["Day of Week",        "Average boardings by day across the system. Use the route dropdown to drill into a specific route."],
+                ["Top 15 Stops",       "Horizontal bar chart of your highest-boarding stops. Filter to a single route to see just its stops."],
+                ["Year-over-Year",     "Same month this year vs. last year, side by side. Hidden when a month filter is active."],
+                ["Seasonal Index",     "Each month as a % of the average (100 = average month). Quickly shows your peak and slow seasons. Hidden when a month filter is active."],
+              ].map(([name, desc]) => (
+                <div key={name} style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: "var(--accent2)", minWidth: 160, flexShrink: 0 }}>{name}</div>
+                  <div style={{ fontSize: 12, color: "var(--muted)", lineHeight: 1.5 }}>{desc}</div>
+                </div>
+              ))}
             </div>
           </SubSection>
 
-          <SubSection title="Editing and deleting existing routes">
-            <div style={{ fontSize: 12, lineHeight: 1.7 }}>
-              The <strong>Routes</strong> list shows all current routes. Edit permanently updates the
-              route in the database (and writes it to <code>routes.csv</code>). Delete requires a
-              confirmation click to prevent accidents. Use the <Tag>↩ Undo</Tag> button in the
-              header to reverse the last add, edit, or delete.
+          <SubSection title="Using the period filter">
+            <div style={{ fontSize: 13, lineHeight: 1.7 }}>
+              The pill bar at the top lists every month in your dataset. Click one month to scope
+              all charts to that period. Click multiple months to combine them. Click
+              <Tag>All time</Tag> to reset. The YoY and Seasonal Index charts are automatically
+              hidden when a filter is active since they're designed to show the full timeline.
             </div>
           </SubSection>
-
-          <Note>Simulating a route does not change the live network. It only stages a proposal for comparison. Permanent changes require using Edit/Save in the Routes panel.</Note>
         </Section>
 
-        {/* ── Metrics Tab ── */}
-        <Section id="metrics" title="Metrics Tab">
-          <SubSection title="Baseline metrics">
-            <div style={{ fontSize: 12, lineHeight: 1.7 }}>
-              When no simulation has been run, the Metrics tab shows the <strong>current network</strong>:
-              total stops, accessible employment hubs, reachable workers, and average travel time
-              across all stop pairs.
+        {/* ── Import ── */}
+        <Section id="import" title="Importing Data">
+
+          <SubSection title="Monthly APC import — do this every month">
+            <p style={{ fontSize: 13, color: "var(--muted)", lineHeight: 1.7, marginBottom: 14 }}>
+              Each month your APC/AVL vendor provides a CSV export. Upload it here and the system
+              automatically updates every ridership chart. New months are <strong>merged in</strong> —
+              your existing history is preserved.
+            </p>
+            <Step n={1}>Go to the <strong>Import</strong> tab.</Step>
+            <Step n={2}>Find the <strong>Avg Passenger Counts</strong> slot and click <Tag>Choose file</Tag>. Select the vendor CSV.</Step>
+            <Step n={3}>Review the preview — it shows the detected columns, row count, and date range. Make sure it looks right.</Step>
+            <Step n={4}>Leave the mode set to <Tag>Merge</Tag> and click <Tag>Import</Tag>.</Step>
+            <Step n={5}>Click <strong>↺ Refresh</strong> in the top-right to reload all charts with the new month included.</Step>
+            <Warning>Only use <Tag>Replace</Tag> mode if you're correcting a previously imported month with a revised file. Replace wipes all existing data for that dataset and starts fresh.</Warning>
+          </SubSection>
+
+          <SubSection title="What the vendor file needs to look like">
+            <div style={{ fontSize: 13, lineHeight: 1.7, marginBottom: 10 }}>
+              The Avg Passenger Counts file needs these columns. Extra columns are fine — they're ignored.
+            </div>
+            <table style={{ marginTop: 4 }}>
+              <thead>
+                <tr><th>Column</th><th>Example</th><th>What it is</th></tr>
+              </thead>
+              <tbody>
+                {[
+                  ["route",     "Route 1",       "Route name"],
+                  ["address",   "100 N Main St", "Stop address or name"],
+                  ["stop_id",   "S001",           "Stop ID"],
+                  ["date",      "2025-03-15",     "Service date (YYYY-MM-DD or MM/DD/YYYY)"],
+                  ["hour",      "8",              "Hour of day, 0–23"],
+                  ["total_in",  "12",             "Boardings at this stop this hour"],
+                  ["total_out", "7",              "Alightings at this stop this hour"],
+                ].map(([col, ex, desc]) => (
+                  <tr key={col}>
+                    <td><code style={{ fontSize: 11, color: "var(--accent)" }}>{col}</code></td>
+                    <td style={{ color: "var(--muted)", fontSize: 11 }}>{ex}</td>
+                    <td style={{ fontSize: 12 }}>{desc}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <Tip>Download the template from the Import tab to get a pre-formatted file you can fill in or map your vendor export to.</Tip>
+          </SubSection>
+
+          <SubSection title="Other files you can upload">
+            <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+              {[
+                ["OTP Excel",        "On-time performance spreadsheet from the vendor. Shown in the Metrics tab."],
+                ["stops.csv",        "Updates the list of bus stops on the map. Replaces all existing stops."],
+                ["routes.csv",       "Updates the route network. Replaces all existing routes."],
+                ["employment_hubs.csv","Updates the employment destinations used in the simulation."],
+              ].map(([name, desc]) => (
+                <div key={name} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+                  <Tag>{name}</Tag>
+                  <div style={{ fontSize: 12, color: "var(--muted)", lineHeight: 1.5 }}>{desc}</div>
+                </div>
+              ))}
+            </div>
+            <Note>Stops, routes, and employment hubs uploads always <strong>replace</strong> the existing data entirely — there's no merge for those files. Make sure your file is complete before uploading.</Note>
+          </SubSection>
+
+          <SubSection title="Backups">
+            <div style={{ fontSize: 13, lineHeight: 1.7 }}>
+              Every successful import creates a timestamped backup automatically. Use the
+              <strong> Backups</strong> section on the Import page to download a previous version
+              or roll back to an earlier state if something goes wrong.
+            </div>
+          </SubSection>
+        </Section>
+
+        {/* ── Simulate ── */}
+        <Section id="simulate" title="Simulate Tab">
+          <p style={{ fontSize: 13, color: "var(--muted)", lineHeight: 1.8, marginBottom: 16 }}>
+            Use this tab to propose route changes and see how they affect the network —
+            without touching any live data.
+          </p>
+
+          <SubSection title="How to propose a route change">
+            <Step n={1}>Find the route you want to modify in the Routes list and click <Tag>Edit</Tag>. Or click <Tag>+ Add Route</Tag> to create a brand-new one.</Step>
+            <Step n={2}>Build the stop list — use the dropdown to add stops, drag to reorder, click × to remove. The Map tab will show a live preview of the path as you build it.</Step>
+            <Step n={3}>Click <Tag>Simulate This Route</Tag> to stage the proposal. You can stage multiple routes before running.</Step>
+            <Step n={4}>Adjust simulation parameters if needed (speed, walking radius, etc.) in the right panel.</Step>
+            <Step n={5}>Click <Tag>Run Full Simulation</Tag>. The Metrics tab opens automatically with the current vs. proposed comparison.</Step>
+            <Step n={6}>Click <Tag>Reset Simulation</Tag> to clear the proposal and start fresh.</Step>
+          </SubSection>
+
+          <SubSection title="Adding a stop that doesn't exist yet">
+            <div style={{ fontSize: 13, lineHeight: 1.7 }}>
+              If your proposed route needs a brand-new stop location, use the <strong>Custom Stops</strong>
+              section to enter a latitude/longitude and a temporary ID. Custom stops only exist for the
+              duration of the simulation — they are not saved to the database.
             </div>
           </SubSection>
 
-          <SubSection title="Simulation comparison">
-            <div style={{ fontSize: 12, lineHeight: 1.7, marginBottom: 8 }}>
-              After running a simulation, the tab shows a side-by-side comparison:
+          <SubSection title="Permanent edits and undo">
+            <div style={{ fontSize: 13, lineHeight: 1.7 }}>
+              <Tag>Edit → Save</Tag> permanently writes the change to the database.
+              <Tag>Delete</Tag> permanently removes a route (requires confirmation).
+              The <Tag>↩ Undo</Tag> button in the header reverses the last add, edit, or delete.
             </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          </SubSection>
+
+          <Note>Staging a simulation does <strong>not</strong> change the live network. Only Save/Delete in the Routes panel makes permanent changes.</Note>
+        </Section>
+
+        {/* ── Metrics ── */}
+        <Section id="metrics" title="Metrics Tab">
+          <p style={{ fontSize: 13, color: "var(--muted)", lineHeight: 1.8, marginBottom: 16 }}>
+            After running a simulation this tab shows a side-by-side comparison: current network
+            on the left, your proposed network on the right, with a delta for each metric.
+            Green = improvement. Red = regression.
+          </p>
+
+          <SubSection title="The four metrics explained simply">
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {[
-                ["Accessible hubs", "Number of employment hubs reachable within the travel time limit."],
-                ["Reachable workers", "Sum of estimated_workers for all reachable hubs."],
-                ["Avg travel time", "Mean shortest-path travel time across all reachable stop pairs."],
-                ["Delta indicators", "Green = improvement, red = regression vs the current network."],
-              ].map(([label, desc]) => (
-                <div key={label} style={{ display: "flex", gap: 10 }}>
-                  <div style={{ fontSize: 12, fontWeight: 600, minWidth: 150, flexShrink: 0 }}>{label}</div>
-                  <div style={{ fontSize: 12, color: "var(--muted)" }}>{desc}</div>
+                {
+                  metric: "Reachable Workers",
+                  simple: "How many people have a bus they could take to work?",
+                  detail: "Counts the total employees at every hub that has a bus stop within walking distance AND can be reached within 30 minutes from at least one other stop. This is the most meaningful equity metric.",
+                  positive: "More workers have transit access to their job.",
+                },
+                {
+                  metric: "Accessible Hubs",
+                  simple: "How many employment destinations can people reach by bus?",
+                  detail: "A hub counts as accessible if there's a nearby stop AND at least one route can reach it within the travel time limit.",
+                  positive: "More employment destinations are within reach.",
+                },
+                {
+                  metric: "Avg Travel Time",
+                  simple: "How long does the average trip take?",
+                  detail: "The mean shortest-path travel time (in minutes) between all stop pairs in the network. Lower is better — so a negative delta is good.",
+                  positive: "Trips are faster on average (negative delta = green).",
+                },
+                {
+                  metric: "Total Stops / Edges",
+                  simple: "How big is the network?",
+                  detail: "Stops = unique stop locations. Edges = directed connections between consecutive stops (each physical segment counts twice — once each direction).",
+                  positive: "More stops or connections in the network.",
+                },
+              ].map(({ metric, simple, detail, positive }) => (
+                <div key={metric} className="card" style={{ padding: "12px 14px" }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "var(--accent)", marginBottom: 2 }}>{metric}</div>
+                  <div style={{ fontSize: 12, fontStyle: "italic", color: "var(--muted)", marginBottom: 5 }}>"{simple}"</div>
+                  <div style={{ fontSize: 12, color: "var(--text)", lineHeight: 1.6, marginBottom: 4 }}>{detail}</div>
+                  <div style={{ fontSize: 11, color: "#4ade80" }}>✓ Positive delta: {positive}</div>
                 </div>
               ))}
             </div>
           </SubSection>
 
           <SubSection title="Exporting results">
-            <div style={{ fontSize: 12, lineHeight: 1.7 }}>
-              Click <Tag>Export CSV</Tag> to download a spreadsheet of the current metrics report,
-              including the employment hub accessibility table and per-route performance data.
-              This is the primary way to share findings with stakeholders or include data in a paper.
+            <div style={{ fontSize: 13, lineHeight: 1.7 }}>
+              Click <Tag>Export CSV</Tag> to download the full metrics report including the
+              employment hub accessibility table. Run a simulation, export, adjust your proposal,
+              run again, export — then compare the two files side by side.
             </div>
-          </SubSection>
-
-          <Tip>Run multiple simulations (tweaking parameters each time) and export the CSV after each one to build a comparison table in Excel or Google Sheets.</Tip>
-        </Section>
-
-        {/* ── Ridership Tab ── */}
-        <Section id="ridership" title="Ridership Tab">
-          <p style={{ fontSize: 13, color: "var(--muted)", lineHeight: 1.7, marginBottom: 16 }}>
-            The Ridership tab visualizes historical boarding data loaded from the boardings CSV files.
-            Use it to understand current demand patterns before proposing changes.
-          </p>
-
-          <SubSection title="Chart views">
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {[
-                ["By Stop", "Total boardings per stop across all routes. Identifies the busiest stops."],
-                ["By Route", "Total boardings per route. Shows which routes carry the most riders."],
-                ["By Day of Week", "Ridership broken down by day — useful for understanding weekday vs weekend demand."],
-                ["By Month", "Monthly trends — useful for seasonal analysis."],
-                ["Route × Day", "Heatmap of each route's ridership by day of week."],
-                ["Route × Month", "Heatmap of each route's ridership by month."],
-              ].map(([view, desc]) => (
-                <div key={view} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-                  <Tag>{view}</Tag>
-                  <div style={{ fontSize: 12, color: "var(--muted)", lineHeight: 1.5 }}>{desc}</div>
-                </div>
-              ))}
-            </div>
-          </SubSection>
-
-          <Note>Ridership data reflects historical actuals. If you've uploaded new boardings CSVs, click ↺ Refresh in the header to reload the charts.</Note>
-        </Section>
-
-        {/* ── Upload Data ── */}
-        <Section id="upload" title="Uploading Data">
-          <p style={{ fontSize: 13, color: "var(--muted)", lineHeight: 1.7, marginBottom: 16 }}>
-            All four core datasets can be replaced via the <strong>Upload Data</strong> section in the
-            Simulate tab. The backend validates the CSV structure before accepting it — you'll see a
-            specific error message if required columns are missing.
-          </p>
-
-          <SubSection title="How to upload">
-            <Step n={1}>Go to the <strong>Simulate</strong> tab. The Upload Data panel is at the top-left.</Step>
-            <Step n={2}>Click <Tag>Upload</Tag> next to the file type you want to replace.</Step>
-            <Step n={3}>Select a <code>.csv</code> file from your computer.</Step>
-            <Step n={4}>Wait for the <Tag color="rgba(34,197,94,0.15)">✓ Uploaded</Tag> confirmation. If the file has schema errors, a red message explains what's wrong.</Step>
-            <Step n={5}>The app automatically refreshes all data after a successful upload.</Step>
-          </SubSection>
-
-          <Tip>Uploading a new file <strong>replaces</strong> the existing data entirely. There is no merge. Make sure your file contains all the rows you want, not just new additions.</Tip>
-
-          <Note>Uploading a new routes.csv or stops.csv clears the undo history since the entire dataset changes.</Note>
-        </Section>
-
-        {/* ── Simulation Parameters ── */}
-        <Section id="params" title="Simulation Parameters">
-          <p style={{ fontSize: 13, color: "var(--muted)", lineHeight: 1.7, marginBottom: 12 }}>
-            These parameters are configurable in the Simulate tab before running a full simulation.
-            They affect both the current and proposed network calculations so the comparison remains fair.
-          </p>
-          <ParamTable rows={[
-            ["Average speed", "15 mph", "Bus travel speed used to convert distances to travel times. Increase for express routes, decrease for stop-and-go traffic."],
-            ["Dwell time", "0.5 min", "Time added at each stop for passenger boarding/alighting. Increase for busy stops or accessibility-focused service."],
-            ["Transfer penalty", "5 min", "Extra minutes added when a rider must switch routes at a shared stop. Reflects wait time for the connecting bus."],
-            ["Walking radius", "0.25 mi", "Maximum distance a rider will walk from their origin to a stop, or from a stop to an employment hub."],
-            ["Travel time limit", "30 min", "A hub is considered 'accessible' only if it can be reached within this many minutes from at least one stop."],
-          ]} />
-          <Tip>To model a scenario where SunTran improves on-time performance, lower the transfer penalty. To model a less walkable community, reduce the walking radius.</Tip>
-        </Section>
-
-        {/* ── CSV Schemas ── */}
-        <Section id="csvschema" title="CSV Schemas">
-          <p style={{ fontSize: 13, color: "var(--muted)", lineHeight: 1.7, marginBottom: 20 }}>
-            The following column definitions are required. Extra columns are ignored. Column names are case-sensitive.
-          </p>
-
-          <SubSection title="stops.csv">
-            <SchemaTable columns={[
-              ["stop_id",   "string",  "Unique identifier, e.g. S001. Used to reference stops in routes.csv."],
-              ["stop_name", "string",  "Human-readable name shown in the UI and map tooltips."],
-              ["latitude",  "decimal", "WGS84 latitude, e.g. 37.10423."],
-              ["longitude", "decimal", "WGS84 longitude, e.g. -113.56789. Must be negative for Utah."],
-            ]} />
-          </SubSection>
-
-          <SubSection title="routes.csv">
-            <SchemaTable columns={[
-              ["route_id",   "string",  "Unique identifier, e.g. R1."],
-              ["route_name", "string",  "Display name, e.g. Red Rock Corridor."],
-              ["color",      "string",  "Hex color for the map polyline, e.g. #e74c3c. Optional — defaults to #3388ff."],
-              ["stop_ids",   "string",  "Pipe-separated list of stop_ids in route order, e.g. S001|S012|S045."],
-            ]} />
-            <Note>Stop order in stop_ids determines the direction of travel. Bidirectional service is modeled automatically.</Note>
-          </SubSection>
-
-          <SubSection title="employment_hubs.csv">
-            <SchemaTable columns={[
-              ["hub_name",          "string",  "Name of the employer or destination, e.g. Dixie State University."],
-              ["latitude",          "decimal", "WGS84 latitude of the hub entrance or centroid."],
-              ["longitude",         "decimal", "WGS84 longitude."],
-              ["estimated_workers", "integer", "Number of employees or daily visitors — used to weight accessibility impact."],
-            ]} />
-          </SubSection>
-
-          <SubSection title="ridership.csv">
-            <SchemaTable columns={[
-              ["route_id",         "string",  "Matches a route_id from routes.csv."],
-              ["stop_id",          "string",  "Matches a stop_id from stops.csv."],
-              ["hour",             "integer", "Hour of day (0–23) in 24-hour format."],
-              ["hourly_boardings", "integer", "Number of passengers boarding at this stop in this hour."],
-              ["hourly_alightings","integer", "Number of passengers alighting at this stop in this hour."],
-            ]} />
           </SubSection>
         </Section>
 
         {/* ── FAQ ── */}
-        <Section id="faq" title="FAQ — Understanding the Simulation Results">
-          <p style={{ fontSize: 13, color: "var(--muted)", lineHeight: 1.7, marginBottom: 20 }}>
-            When you run a simulation the Metrics tab shows a <strong>current</strong> value,
-            a <strong>proposed</strong> value, and a <strong>delta</strong> (the difference).
-            A green delta is an improvement; red is a regression. Click each question below to learn
-            exactly what is being measured.
-          </p>
+        <Section id="faq" title="FAQ">
 
-          <FaqItem question="What does Total Stops mean, and what does a +/− delta tell me?">
-            <p>This is simply the number of physical bus stops in the network graph. Each unique stop
-            ID counts as one node.</p>
-            <p style={{ marginTop: 6 }}>
-              <strong>+ delta</strong> — your proposed route introduces stops that didn't previously exist
-              (e.g. you added custom stops or a new route that passes through new locations).<br />
-              <strong>− delta</strong> — stops were removed because a route was deleted or shortened and
-              those stops are no longer served by any route.
-            </p>
-            <p style={{ marginTop: 6 }}>A stop count change alone is neither good nor bad — what matters
-            is whether those new stops improve hub accessibility and travel time.</p>
-          </FaqItem>
-
-          <FaqItem question="What is a Route Segment / Total Edges?">
-            <p>A <strong>route segment</strong> is the direct connection between two consecutive stops
-            on a route. For example, a route with 4 stops (A → B → C → D) has 3 segments.</p>
-            <p style={{ marginTop: 6 }}>Because the simulation models bus travel as <strong>bidirectional</strong>
-            (buses run both ways), each segment is stored as two directed edges in the network graph.
-            So 3 physical segments = 6 edges in the count.</p>
-            <p style={{ marginTop: 6 }}>
-              <strong>+ delta</strong> — more segments means more direct connections between stops.<br />
-              <strong>− delta</strong> — a route was shortened or removed, reducing the number of
-              connections in the network.
-            </p>
-            <p style={{ marginTop: 6 }}>A high edge count alone doesn't mean better service — a long
-            route in a low-demand area adds many edges but may not improve hub accessibility at all.</p>
-          </FaqItem>
-
-          <FaqItem question="What does Average Travel Time mean, and why is a negative delta good?">
-            <p>The simulation calculates the <strong>shortest travel time</strong> between every possible
-            pair of stops in the network using Dijkstra's algorithm. Average Travel Time is the mean of
-            all those shortest paths, in minutes.</p>
-            <p style={{ marginTop: 6 }}>Travel time between two stops is based on:</p>
+          <FaqItem question="My proposed route looks good on the map but the metrics didn't improve. Why?">
+            <p>A few common reasons:</p>
             <ul style={{ paddingLeft: 18, marginTop: 4 }}>
-              <li>Straight-line distance between stops (via haversine formula)</li>
-              <li>Divided by average bus speed (default 15 mph)</li>
-              <li>Plus 0.5 minutes dwell time at each stop</li>
-              <li>Plus 5 minutes if the rider must transfer to a different route</li>
+              <li>Your new stops aren't within 0.25 miles of any employment hub, so no new workers become reachable.</li>
+              <li>The area is already covered by another route — the hubs there were already accessible.</li>
+              <li>The change added a transfer where trips were previously direct, which increased average travel time even if you added stops.</li>
             </ul>
-            <p style={{ marginTop: 6 }}>
-              <strong>− delta (green)</strong> — the proposed network gets riders to destinations
-              faster on average. This is what you want.<br />
-              <strong>+ delta (red)</strong> — the change made the average trip longer. This could mean
-              a direct route was replaced by a less efficient one, or transfers were added.
-            </p>
-            <p style={{ marginTop: 6 }}>This is the most meaningful single metric for evaluating
-            rider experience.</p>
+            <p style={{ marginTop: 6 }}>Try turning on the 0.25-mile coverage overlay on the Map tab and look for employment hubs (stars) that don't have a stop ring overlapping them — those are the accessibility gaps worth targeting.</p>
           </FaqItem>
 
-          <FaqItem question="What does Accessible Hubs mean?">
-            <p>An employment hub (hospital, university, major employer) is considered
-            <strong> accessible</strong> if two conditions are met:</p>
-            <ol style={{ paddingLeft: 18, marginTop: 4 }}>
-              <li>There is at least one bus stop within <strong>0.25 miles walking distance</strong> of
-              the hub's entrance.</li>
-              <li>At least one other stop in the network can reach that hub stop within the
-              <strong> travel time limit</strong> (default 30 minutes).</li>
-            </ol>
-            <p style={{ marginTop: 6 }}>
-              <strong>+ delta</strong> — your proposed route opened up transit access to an employer
-              that was previously unreachable or too far.<br />
-              <strong>− delta</strong> — a route change removed the only bus path to a hub within
-              the time limit. This is a serious equity concern.
-            </p>
+          <FaqItem question="What does the Transfer Penalty do?">
+            <p>When a rider needs to switch from one route to another at a shared stop, the simulation
+            adds extra minutes (default: 5) to represent waiting for the connecting bus. This means a
+            slightly longer direct route often scores better than a technically shorter route that
+            requires a transfer.</p>
+            <p style={{ marginTop: 6 }}>You can adjust it in the Simulate tab. Lower it to model
+            frequent, reliable connections. Raise it to model infrequent service where missing a
+            connection is costly.</p>
           </FaqItem>
 
-          <FaqItem question="What does Reachable Workers mean?">
-            <p>This is the total number of workers across all <strong>accessible</strong> employment hubs.
-            Each hub in <code>employment_hubs.csv</code> has an <code>estimated_workers</code> field.
-            This metric sums those values for every hub that passes the accessibility test above.</p>
-            <p style={{ marginTop: 6 }}>
-              <strong>+ delta</strong> — more workers now have at least one bus stop they can use to
-              reach their workplace within 30 minutes. This is the headline equity metric.<br />
-              <strong>− delta</strong> — a route change cut off access to a major employer. Even a
-              small route tweak can cause a large negative number here if it affects a hub with
-              thousands of workers.
-            </p>
-            <p style={{ marginTop: 6 }}>Example: if Intermountain Health has 3,200 estimated workers
-            and your proposed route is the only one that can reach it within 30 minutes — removing
-            that route drops Reachable Workers by 3,200 instantly.</p>
-          </FaqItem>
-
-          <FaqItem question="What is a Transfer Penalty and how does it affect results?">
-            <p>When the shortest path between two stops requires switching from one route to another
-            at a shared stop, the simulation adds a <strong>transfer penalty</strong> (default 5 minutes)
-            to that trip's total travel time.</p>
-            <p style={{ marginTop: 6 }}>This represents the real-world wait time for the connecting bus.
-            It means a direct route — even if slightly longer in distance — will often score better than
-            a faster route that requires a transfer.</p>
-            <p style={{ marginTop: 6 }}>You can adjust this in <strong>Simulation Parameters</strong>.
-            Lowering it models a system with frequent, reliable connections. Raising it to 10–15 minutes
-            models infrequent service where missed connections are costly.</p>
-          </FaqItem>
-
-          <FaqItem question="Why might my proposed route show no improvement even though it added stops?">
-            <p>Several reasons this can happen:</p>
+          <FaqItem question="What are the simulation's blind spots?">
             <ul style={{ paddingLeft: 18, marginTop: 4 }}>
-              <li>The new stops are not within 0.25 miles of any employment hub — so they don't
-              help hub accessibility.</li>
-              <li>The new stops are in an area already covered by another route — no new workers
-              become reachable.</li>
-              <li>The route added a transfer requirement for trips that were previously direct,
-              increasing average travel time.</li>
-              <li>The employment hub nearest to your new stops already had no bus stop within
-              walking range — the hub is simply too far off any route.</li>
-            </ul>
-            <p style={{ marginTop: 6 }}>Check the <strong>Employment Hub Access</strong> table in the
-            Metrics tab to see which specific hubs are and aren't accessible, and use the Map tab to
-            visually inspect walking-radius coverage around those hubs.</p>
-          </FaqItem>
-
-          <FaqItem question="What are the limitations of the simulation model?">
-            <ul style={{ paddingLeft: 18, marginTop: 4 }}>
-              <li><strong>No schedules or frequency</strong> — the model assumes a bus is always available.
-              It does not account for headway, time of day, or first/last trip.</li>
-              <li><strong>Speed is constant</strong> — all route segments use the same average speed.
-              There is no traffic modeling.</li>
-              <li><strong>Walking is crow-flies</strong> — the 0.25-mile walking radius uses straight-line
-              distance, not actual walkable paths.</li>
-              <li><strong>Employment hubs only</strong> — accessibility is measured only to hubs in
-              your <code>employment_hubs.csv</code>. Grocery stores, clinics, schools, etc. are not
-              counted unless added to that file.</li>
-              <li><strong>No demand modeling</strong> — adding a route doesn't predict how many people
-              will actually ride it. Use the Ridership tab's Demand Forecast for that estimate.</li>
+              <li><strong>No schedule or frequency</strong> — the model assumes a bus is always available. First/last trips, headways, and time gaps aren't modeled.</li>
+              <li><strong>Constant speed</strong> — every segment uses the same average speed. No traffic, signals, or road type differences.</li>
+              <li><strong>Straight-line walking</strong> — the 0.25-mile radius is crow-flies, not actual pedestrian paths.</li>
+              <li><strong>Only counts employment hubs</strong> — grocery stores, clinics, schools, etc. aren't counted unless added to employment_hubs.csv.</li>
+              <li><strong>No ridership prediction</strong> — adding a route doesn't estimate how many people will actually ride it. Use the Ridership tab to assess historical demand along a corridor.</li>
             </ul>
           </FaqItem>
+
+          <FaqItem question="The charts are empty. What's wrong?">
+            <p>Most likely the ridership data hasn't been imported yet. Go to the <strong>Import</strong> tab,
+            upload your APC vendor CSV under "Avg Passenger Counts," then click <strong>↺ Refresh</strong> in
+            the header. If data was just uploaded and charts still look empty, check that the
+            <Tag>All time</Tag> pill is selected (not a month filter).</p>
+          </FaqItem>
+
+          <FaqItem question="I uploaded a file but the data looks wrong. Can I roll it back?">
+            <p>Yes. Go to the <strong>Import</strong> tab, find the file type, and open the
+            <strong> Backups</strong> section. Every import creates a timestamped backup. Click
+            <Tag>Restore</Tag> next to the version you want to go back to.</p>
+          </FaqItem>
+
+          <FaqItem question="What's the difference between Merge and Replace when importing?">
+            <p><strong>Merge</strong> adds new records on top of existing data, keyed by route/stop/month.
+            If a record already exists for that key, it gets updated. If it's new, it gets added.
+            Use this for routine monthly uploads.</p>
+            <p style={{ marginTop: 6 }}><strong>Replace</strong> wipes all existing data for that dataset
+            and loads the uploaded file from scratch. Use this only if you need to correct a previously
+            imported month with a fully revised file.</p>
+          </FaqItem>
+
         </Section>
 
       </div>

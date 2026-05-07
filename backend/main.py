@@ -12,7 +12,10 @@ from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from auth import authenticate_user, create_access_token, get_current_user
+from auth import (
+    authenticate_user, create_access_token, get_current_user, get_current_admin,
+    create_user, delete_user, list_usernames,
+)
 from route_loader import (
     load_stops,
     load_routes,
@@ -44,7 +47,17 @@ REQUIRED_CSV_COLUMNS = {
     "stops": {"stop_id", "stop_name", "latitude", "longitude"},
     "routes": {"route_id", "route_name", "stop_ids"},
     "ridership": {"route_id", "stop_id", "hour", "hourly_boardings", "hourly_alightings"},
-    "employment_hubs": {"hub_name", "latitude", "longitude", "estimated_workers"},
+    "employment_hubs": {"hub_name", "latitude", "longitude"},
+}
+
+# ── Route name aliases ────────────────────────────────────────────────────────
+# Maps vendor route name variants → canonical name used in all aggregations.
+# Add entries here whenever the vendor uses a different name for the same route.
+ROUTE_NAME_ALIASES: dict[str, str] = {
+    "Route 1 Red Cliffs (A)":                    "Route 1 Red Cliffs",
+    "Route 1 Red Cliffs (B)":                    "Route 1 Red Cliffs",
+    "Route 3 West Side Connector (Inbound)":     "Route 3 West Side Connector",
+    "Route 3 West Side Connector (Outbound)":    "Route 3 West Side Connector",
 }
 
 # ── In-memory state ────────────────────────────────────────────────────────────
@@ -60,6 +73,10 @@ _boardings_month:       pd.DataFrame = pd.DataFrame()
 _boardings_route_dow:   pd.DataFrame = pd.DataFrame()
 _boardings_route_month: pd.DataFrame = pd.DataFrame()
 _boardings_route_stop:  pd.DataFrame = pd.DataFrame()
+_boardings_hour:        pd.DataFrame = pd.DataFrame()
+_boardings_route_hour:  pd.DataFrame = pd.DataFrame()
+_boardings_stop_month:  pd.DataFrame = pd.DataFrame()
+_boardings_dow_month:   pd.DataFrame = pd.DataFrame()
 
 
 def _save_routes():
@@ -79,15 +96,23 @@ def _save_routes():
 
 
 def _load_boardings():
-    global _boardings_stop, _boardings_route, _boardings_dow, _boardings_month
+    global _boardings_stop, _boardings_route, _boardings_dow, _boardings_month, \
+           _boardings_route_dow, _boardings_route_month, _boardings_route_stop, \
+           _boardings_hour, _boardings_route_hour, \
+           _boardings_stop_month, _boardings_dow_month, _boardings_route_dow_month
     for attr, fname in [
-        ("_boardings_stop",        "boardings_by_stop.csv"),
-        ("_boardings_route",       "boardings_by_route.csv"),
-        ("_boardings_dow",         "boardings_by_dow.csv"),
-        ("_boardings_month",       "boardings_by_month.csv"),
-        ("_boardings_route_dow",   "boardings_by_route_dow.csv"),
-        ("_boardings_route_month", "boardings_by_route_month.csv"),
-        ("_boardings_route_stop",  "boardings_by_route_stop.csv"),
+        ("_boardings_stop",             "boardings_by_stop.csv"),
+        ("_boardings_route",            "boardings_by_route.csv"),
+        ("_boardings_dow",              "boardings_by_dow.csv"),
+        ("_boardings_month",            "boardings_by_month.csv"),
+        ("_boardings_route_dow",        "boardings_by_route_dow.csv"),
+        ("_boardings_route_month",      "boardings_by_route_month.csv"),
+        ("_boardings_route_stop",       "boardings_by_route_stop.csv"),
+        ("_boardings_hour",             "boardings_by_hour.csv"),
+        ("_boardings_route_hour",       "boardings_by_route_hour.csv"),
+        ("_boardings_stop_month",       "boardings_by_stop_month.csv"),
+        ("_boardings_dow_month",        "boardings_by_dow_month.csv"),
+        ("_boardings_route_dow_month",  "boardings_by_route_dow_month.csv"),
     ]:
         path = os.path.join(DATA_DIR, fname)
         globals()[attr] = pd.read_csv(path) if os.path.exists(path) else pd.DataFrame()
@@ -231,6 +256,16 @@ def get_boardings_by_stop():
 
 @protected.get("/api/boardings/by-route")
 def get_boardings_by_route():
+    # Derive from accumulated route_month data so historical months stack correctly
+    if not _boardings_route_month.empty and "route" in _boardings_route_month.columns:
+        df = _boardings_route_month.groupby("route", sort=False).agg(
+            total_in=("total_in", "sum"),
+            total_out=("total_out", "sum"),
+            unique_days=("unique_days", "sum"),
+        ).reset_index()
+        df["avg_daily_in"]  = (df["total_in"]  / df["unique_days"].replace(0, 1)).round(1)
+        df["avg_daily_out"] = (df["total_out"] / df["unique_days"].replace(0, 1)).round(1)
+        return df.fillna("").to_dict(orient="records")
     return [] if _boardings_route.empty else _boardings_route.fillna("").to_dict(orient="records")
 
 @protected.get("/api/boardings/by-dow")
@@ -245,6 +280,10 @@ def get_boardings_by_month():
 def get_boardings_by_route_dow():
     return [] if _boardings_route_dow.empty else _boardings_route_dow.fillna("").to_dict(orient="records")
 
+@protected.get("/api/boardings/by-route-dow-month")
+def get_boardings_by_route_dow_month():
+    return [] if _boardings_route_dow_month.empty else _boardings_route_dow_month.fillna("").to_dict(orient="records")
+
 @protected.get("/api/boardings/by-route-month")
 def get_boardings_by_route_month():
     return [] if _boardings_route_month.empty else _boardings_route_month.fillna("").to_dict(orient="records")
@@ -252,6 +291,35 @@ def get_boardings_by_route_month():
 @protected.get("/api/boardings/by-route-stop")
 def get_boardings_by_route_stop():
     return [] if _boardings_route_stop.empty else _boardings_route_stop.fillna("").to_dict(orient="records")
+
+@protected.get("/api/boardings/by-hour")
+def get_boardings_by_hour():
+    return [] if _boardings_hour.empty else _boardings_hour.fillna("").to_dict(orient="records")
+
+@protected.get("/api/boardings/by-route-hour")
+def get_boardings_by_route_hour():
+    return [] if _boardings_route_hour.empty else _boardings_route_hour.fillna("").to_dict(orient="records")
+
+@protected.get("/api/boardings/by-stop-month")
+def get_boardings_by_stop_month():
+    return [] if _boardings_stop_month.empty else _boardings_stop_month.fillna("").to_dict(orient="records")
+
+@protected.get("/api/boardings/by-dow-month")
+def get_boardings_by_dow_month():
+    return [] if _boardings_dow_month.empty else _boardings_dow_month.fillna("").to_dict(orient="records")
+
+# Stubs for endpoints referenced in client.js — data not yet collected
+@protected.get("/api/boardings/by-dow-hour")
+def get_boardings_by_dow_hour():
+    return []
+
+@protected.get("/api/boardings/by-route-dow-hour")
+def get_boardings_by_route_dow_hour():
+    return []
+
+@protected.get("/api/boardings/by-route-stop-hour")
+def get_boardings_by_route_stop_hour():
+    return []
 
 
 @protected.get("/api/otp")
@@ -458,6 +526,26 @@ BOARDINGS_FILES: dict[str, dict] = {
         "key_cols": ["route_name", "stop_name"],
         "date_col": None,
     },
+    "boardings_by_hour": {
+        "filename": "boardings_by_hour.csv",
+        "key_cols": ["hour"],
+        "date_col": None,
+    },
+    "boardings_by_route_hour": {
+        "filename": "boardings_by_route_hour.csv",
+        "key_cols": ["route", "hour"],
+        "date_col": None,
+    },
+    "boardings_by_stop_month": {
+        "filename": "boardings_by_stop_month.csv",
+        "key_cols": ["route", "stop_id", "month"],
+        "date_col": "month",
+    },
+    "boardings_by_dow_month": {
+        "filename": "boardings_by_dow_month.csv",
+        "key_cols": ["day_num", "month"],
+        "date_col": "month",
+    },
 }
 
 
@@ -513,6 +601,72 @@ def _merge_boardings_df(
     return merged, int(is_new.sum()), int(is_update.sum())
 
 
+def _additive_merge_df(
+    existing: pd.DataFrame,
+    incoming: pd.DataFrame,
+    key_cols: list[str],
+    sum_cols: list[str],
+) -> tuple[pd.DataFrame, int, int]:
+    """
+    Like _merge_boardings_df but ADDS sum_cols for matching keys instead of replacing.
+    Used for DOW and hourly aggregates that must accumulate across monthly imports.
+    Returns (merged, added, updated).
+    """
+    if existing.empty:
+        return incoming.copy(), len(incoming), 0
+
+    valid_keys = [k for k in key_cols if k in existing.columns and k in incoming.columns]
+    if not valid_keys:
+        merged = pd.concat([existing, incoming], ignore_index=True)
+        return merged, len(incoming), 0
+
+    def make_key(df: pd.DataFrame) -> "pd.Series[str]":
+        return df[valid_keys].astype(str).agg("|".join, axis=1)
+
+    result = existing.copy()
+    for col in sum_cols:
+        if col not in result.columns:
+            result[col] = 0
+
+    existing_keys = make_key(result)
+    incoming_keys = make_key(incoming)
+
+    is_new    = ~incoming_keys.isin(existing_keys)
+    is_update =  incoming_keys.isin(existing_keys)
+
+    updated_count = 0
+    for _, row in incoming[is_update].iterrows():
+        k = "|".join(str(row[c]) for c in valid_keys)
+        mask = existing_keys == k
+        for col in sum_cols:
+            if col in result.columns:
+                result.loc[mask, col] = result.loc[mask, col].values + row.get(col, 0)
+        updated_count += 1
+
+    new_rows = incoming[is_new]
+    if len(new_rows):
+        result = pd.concat([result, new_rows], ignore_index=True)
+
+    return result, len(new_rows), updated_count
+
+
+def _canonical_route_id(name: str) -> str:
+    """Convert any route name variant to a canonical R{N} ID (e.g. 'Route 3 ...' → 'R3')."""
+    import re
+    m = re.search(r"Route\s+(\d+)", str(name), re.IGNORECASE)
+    return f"R{m.group(1)}" if m else str(name)
+
+
+def _normalize_otp_df(df: pd.DataFrame) -> pd.DataFrame:
+    """Apply route name aliases and canonical route_id to an OTP DataFrame in-place."""
+    df = df.copy()
+    if ROUTE_NAME_ALIASES and "route_name" in df.columns:
+        df["route_name"] = df["route_name"].replace(ROUTE_NAME_ALIASES)
+    if "route_name" in df.columns:
+        df["route_id"] = df["route_name"].apply(_canonical_route_id)
+    return df
+
+
 def _parse_otp_excel(content: bytes) -> pd.DataFrame:
     """Parse OTP Excel (Route_OTP_By_Route format) into otp.csv column layout."""
     import re
@@ -520,12 +674,13 @@ def _parse_otp_excel(content: bytes) -> pd.DataFrame:
     xls = pd.read_excel(io.BytesIO(content), sheet_name="COMBINED")
     xls.columns = [str(c).strip() for c in xls.columns]
 
-    def route_id(name: str) -> str:
-        m = re.search(r"Route\s+(\d+)", str(name), re.IGNORECASE)
-        return f"R{m.group(1)}" if m else ""
-
     def direction(name: str) -> str:
-        m = re.search(r"\(([^)]+)\)\s*$", str(name))
+        n = str(name)
+        if "(A)" in n or "Outbound" in n:
+            return "A"
+        if "(B)" in n or "Inbound" in n:
+            return "B"
+        m = re.search(r"\(([^)]+)\)\s*$", n)
         return m.group(1) if m else ""
 
     col_map = {
@@ -540,7 +695,8 @@ def _parse_otp_excel(content: bytes) -> pd.DataFrame:
     }
     available = {k: v for k, v in col_map.items() if k in xls.columns}
     df = xls.rename(columns=available)[list(available.values())].copy()
-    df["route_id"] = df["route_name"].apply(route_id)
+    # Apply alias normalization + canonical route_id before direction tagging
+    df = _normalize_otp_df(df)
     df["direction"] = df["route_name"].apply(direction)
 
     out_cols = [
@@ -551,6 +707,435 @@ def _parse_otp_excel(content: bytes) -> pd.DataFrame:
         if c not in df.columns:
             df[c] = None
     return df[out_cols]
+
+
+# ── Raw AVL/APC vendor file parsers ───────────────────────────────────────────
+
+def _parse_avg_passenger_counts(content: bytes) -> dict:
+    """
+    Parse APC Average Passenger Counts CSV (vendor format with metadata header rows).
+    Filters non-revenue routes (Route ID <= 0) and returns 6 aggregated DataFrames
+    ready to merge into the internal boardings CSVs.
+    """
+    import csv as _csv
+
+    text = content.decode("utf-8", errors="replace")
+    lines = text.splitlines()
+
+    # Find the data header row: it starts with 'Date,' and is followed by date-formatted rows
+    data_start = None
+    for i, line in enumerate(lines):
+        if ("Date" in line and "Route ID" in line and "Stop ID" in line):
+            data_start = i
+            break
+    if data_start is None:
+        # Fallback: look for the line after "Average Passenger Counts" label
+        for i, line in enumerate(lines):
+            if "Average Passenger Counts" in line:
+                for j in range(i + 1, min(i + 6, len(lines))):
+                    if "Date" in lines[j] and "Route" in lines[j]:
+                        data_start = j
+                        break
+                if data_start is not None:
+                    break
+    if data_start is None:
+        raise ValueError(
+            "Could not find the data header row. Expected a row containing "
+            "'Date', 'Route ID', and 'Stop ID' after the report metadata."
+        )
+
+    # Collect data lines; stop at next blank-line-preceded section or end of file
+    data_lines = [lines[data_start]]
+    for line in lines[data_start + 1:]:
+        stripped = line.strip()
+        if not stripped:
+            continue  # skip blank lines inside data block
+        # Stop when we hit a non-data row (e.g. a quoted section label with no digits)
+        first_char = stripped.lstrip('"')[:1]
+        if stripped.startswith('"') and not first_char.isdigit() and "Route" not in stripped:
+            break
+        data_lines.append(line)
+
+    df = pd.read_csv(io.StringIO("\n".join(data_lines)))
+    df.columns = [str(c).strip().strip('"') for c in df.columns]
+
+    # Filter non-revenue routes (Route ID <= 0)
+    if "Route ID" in df.columns:
+        df = df[pd.to_numeric(df["Route ID"], errors="coerce").fillna(-999) > 0].copy()
+    if df.empty:
+        raise ValueError("No revenue-route rows found (Route ID > 0 required).")
+
+    # Rename vendor columns → internal names
+    df = df.rename(columns={
+        "Route Name":      "route",
+        "Stop Name":       "address",
+        "Stop ID":         "stop_id",
+        "Total Count In":  "total_in",
+        "Total Count Out": "total_out",
+    })
+    df["total_in"]  = pd.to_numeric(df["total_in"],  errors="coerce").fillna(0).astype(int)
+    df["total_out"] = pd.to_numeric(df["total_out"], errors="coerce").fillna(0).astype(int)
+    df["stop_id"]   = df["stop_id"].astype(str).str.strip()
+
+    # Normalize route names using the alias table
+    if ROUTE_NAME_ALIASES:
+        df["route"] = df["route"].replace(ROUTE_NAME_ALIASES)
+
+    # Parse date and derive temporal fields
+    df["_date"] = pd.to_datetime(df["Date"], format="%m/%d/%Y", errors="coerce")
+    df = df.dropna(subset=["_date"])
+    df["month"]    = df["_date"].dt.strftime("%Y-%m")
+    df["day_num"]  = df["_date"].dt.dayofweek  # 0 = Monday
+    df["day_name"] = df["_date"].dt.day_name()
+
+    results = {}
+
+    # 1. boardings_by_route_month  (key: route, month) — accumulates across months
+    rm = df.groupby(["route", "month"], sort=False).agg(
+        total_in=("total_in", "sum"),
+        total_out=("total_out", "sum"),
+        unique_days=("_date", "nunique"),
+    ).reset_index()
+    rm["avg_daily_in"]  = (rm["total_in"]  / rm["unique_days"].replace(0, 1)).round(1)
+    rm["avg_daily_out"] = (rm["total_out"] / rm["unique_days"].replace(0, 1)).round(1)
+    results["boardings_by_route_month"] = rm
+
+    # 2. boardings_by_month  (key: month)
+    bm = df.groupby("month", sort=False).agg(
+        total_in=("total_in", "sum"),
+        total_out=("total_out", "sum"),
+        unique_days=("_date", "nunique"),
+    ).reset_index()
+    bm["avg_daily_in"]  = (bm["total_in"]  / bm["unique_days"].replace(0, 1)).round(1)
+    bm["avg_daily_out"] = (bm["total_out"] / bm["unique_days"].replace(0, 1)).round(1)
+    results["boardings_by_month"] = bm
+
+    # 3. boardings_by_route_dow  (key: route, day_num) — additive merge (totals accumulate)
+    rdow = df.groupby(["route", "day_num", "day_name"], sort=False).agg(
+        total_in=("total_in", "sum"),
+        total_out=("total_out", "sum"),
+        _ndays=("_date", "nunique"),
+    ).reset_index()
+    rdow["avg_in"]  = (rdow["total_in"]  / rdow["_ndays"].replace(0, 1)).round(1)
+    rdow["avg_out"] = (rdow["total_out"] / rdow["_ndays"].replace(0, 1)).round(1)
+    results["boardings_by_route_dow"] = rdow[
+        ["route", "day_num", "day_name", "avg_in", "avg_out", "total_in", "total_out"]
+    ]
+
+    # 4. boardings_by_dow  (key: day_num)
+    dow = df.groupby(["day_num", "day_name"], sort=False).agg(
+        total_in=("total_in", "sum"),
+        total_out=("total_out", "sum"),
+        _ndays=("_date", "nunique"),
+    ).reset_index()
+    dow["avg_in"]  = (dow["total_in"]  / dow["_ndays"].replace(0, 1)).round(1)
+    dow["avg_out"] = (dow["total_out"] / dow["_ndays"].replace(0, 1)).round(1)
+    results["boardings_by_dow"] = dow[
+        ["day_num", "day_name", "avg_in", "avg_out", "total_in", "total_out"]
+    ]
+
+    # 5. boardings_by_route_stop  (key: route, address)
+    rs = df.groupby(["route", "address"], sort=False).agg(
+        total_in=("total_in", "sum"),
+        total_out=("total_out", "sum"),
+        days=("_date", "nunique"),
+    ).reset_index()
+    rs["avg_daily_in"]  = (rs["total_in"]  / rs["days"].replace(0, 1)).round(2)
+    rs["avg_daily_out"] = (rs["total_out"] / rs["days"].replace(0, 1)).round(2)
+    results["boardings_by_route_stop"] = rs
+
+    # 6. boardings_by_stop  (key: route, stop_id)
+    bs = df.groupby(["route", "stop_id", "address"], sort=False).agg(
+        total_in=("total_in", "sum"),
+        total_out=("total_out", "sum"),
+        days=("_date", "nunique"),
+    ).reset_index()
+    bs["avg_daily_in"]  = (bs["total_in"]  / bs["days"].replace(0, 1)).round(2)
+    bs["avg_daily_out"] = (bs["total_out"] / bs["days"].replace(0, 1)).round(2)
+    results["boardings_by_stop"] = bs
+
+    # 7. boardings_by_stop_month  (key: route, stop_id, month)
+    bsm = df.groupby(["route", "stop_id", "address", "month"], sort=False).agg(
+        total_in=("total_in", "sum"),
+        total_out=("total_out", "sum"),
+        days=("_date", "nunique"),
+    ).reset_index()
+    bsm["avg_daily_in"]  = (bsm["total_in"]  / bsm["days"].replace(0, 1)).round(2)
+    bsm["avg_daily_out"] = (bsm["total_out"] / bsm["days"].replace(0, 1)).round(2)
+    results["boardings_by_stop_month"] = bsm
+
+    # 8. boardings_by_dow_month  (key: day_num, month)
+    dowm = df.groupby(["day_num", "day_name", "month"], sort=False).agg(
+        total_in=("total_in", "sum"),
+        _ndays=("_date", "nunique"),
+    ).reset_index()
+    dowm["avg_in"] = (dowm["total_in"] / dowm["_ndays"].replace(0, 1)).round(1)
+    results["boardings_by_dow_month"] = dowm[["day_num", "day_name", "month", "avg_in", "total_in"]]
+
+    # 9. boardings_by_route_dow_month  (key: route, day_num, month)
+    rdm = df.groupby(["route", "day_num", "day_name", "month"], sort=False).agg(
+        total_in=("total_in", "sum"),
+        _ndays=("_date", "nunique"),
+    ).reset_index()
+    rdm["avg_in"] = (rdm["total_in"] / rdm["_ndays"].replace(0, 1)).round(1)
+    results["boardings_by_route_dow_month"] = rdm[["route", "day_num", "day_name", "month", "avg_in", "total_in"]]
+
+    return results
+
+
+def _parse_hourly_apc(content: bytes) -> dict:
+    """
+    Parse HourlyApcCounts CSV (vendor wide-format with 24 hour columns).
+    Returns boardings_by_hour (system-wide totals) and boardings_by_route_hour.
+    """
+    import csv as _csv
+
+    text = content.decode("utf-8", errors="replace")
+    lines = text.splitlines()
+    HOURS = [f"{h:02d}:00" for h in range(24)]
+
+    sys_in_vals  = None
+    sys_out_vals = None
+    route_in_start = None
+
+    for i, line in enumerate(lines):
+        if '"Total Count In"' in line or line.strip().startswith('"Total Count In"'):
+            try:
+                row = list(_csv.reader([line]))[0]
+                vals = []
+                for v in row[1:25]:
+                    try:
+                        vals.append(int(float(v)))
+                    except (ValueError, TypeError):
+                        vals.append(0)
+                if len(vals) == 24:
+                    sys_in_vals = vals
+            except Exception:
+                pass
+        elif '"Total Count Out"' in line or line.strip().startswith('"Total Count Out"'):
+            try:
+                row = list(_csv.reader([line]))[0]
+                vals = []
+                for v in row[1:25]:
+                    try:
+                        vals.append(int(float(v)))
+                    except (ValueError, TypeError):
+                        vals.append(0)
+                if len(vals) == 24:
+                    sys_out_vals = vals
+            except Exception:
+                pass
+        elif "Hourly Passenger Count In by Route" in line:
+            route_in_start = i + 1  # header row is next line
+
+    # Build system-wide boardings_by_hour
+    bh_rows = [
+        {
+            "hour": h,
+            "total_in":  sys_in_vals[h]  if sys_in_vals  else 0,
+            "total_out": sys_out_vals[h] if sys_out_vals else 0,
+        }
+        for h in range(24)
+    ]
+    boardings_by_hour = pd.DataFrame(bh_rows)
+
+    # Parse per-route hourly section
+    route_hour_rows = []
+    if route_in_start is not None:
+        # First line is the header
+        header_line = lines[route_in_start]
+        try:
+            header = [h.strip().strip('"') for h in list(_csv.reader([header_line]))[0]]
+            hour_indices = {int(h.split(":")[0]): idx for idx, h in enumerate(header) if h in HOURS}
+
+            for raw_line in lines[route_in_start + 1:]:
+                stripped = raw_line.strip()
+                if not stripped:
+                    continue
+                if stripped.startswith('"Hourly') or stripped.startswith('"OTP'):
+                    break
+                try:
+                    row = list(_csv.reader([raw_line]))[0]
+                    try:
+                        route_id_val = int(float(row[0]))
+                    except (ValueError, TypeError, IndexError):
+                        continue
+                    if route_id_val <= 0:
+                        continue
+                    route_name = row[1].strip().strip('"') if len(row) > 1 else ""
+                    for hour, col_idx in hour_indices.items():
+                        if col_idx < len(row):
+                            try:
+                                val = int(float(row[col_idx]))
+                            except (ValueError, TypeError):
+                                val = 0
+                            route_hour_rows.append({
+                                "route": route_name,
+                                "hour": hour,
+                                "total_in": val,
+                            })
+                except Exception:
+                    continue
+        except Exception:
+            pass
+
+    boardings_by_route_hour = (
+        pd.DataFrame(route_hour_rows)
+        if route_hour_rows
+        else pd.DataFrame(columns=["route", "hour", "total_in"])
+    )
+
+    return {
+        "boardings_by_hour": boardings_by_hour,
+        "boardings_by_route_hour": boardings_by_route_hour,
+    }
+
+
+def _parse_otp_csv(content: bytes) -> pd.DataFrame:
+    """
+    Parse TripOTPByRouteAndStop CSV (multi-section vendor format).
+    Prefers the 'OTP by Date, Route, and Stop' section (most granular).
+    Falls back to 'OTP by Date and Route' if stop-level data is absent.
+    Returns a DataFrame matching otp.csv schema.
+    """
+    text = content.decode("utf-8", errors="replace")
+    lines = text.splitlines()
+
+    def _find_data_header(section_label: str) -> Optional[int]:
+        """Return line index of the data-column header following section_label."""
+        for i, line in enumerate(lines):
+            if section_label in line:
+                for j in range(i + 1, min(i + 6, len(lines))):
+                    if "Route ID" in lines[j] and lines[j].strip():
+                        return j
+        return None
+
+    def _read_section(header_idx: int) -> pd.DataFrame:
+        if header_idx is None:
+            return pd.DataFrame()
+        section_lines = [lines[header_idx]]
+        i = header_idx + 1
+        while i < len(lines):
+            line = lines[i].strip()
+            if not line:
+                i += 1
+                continue
+            # Stop at next section header (quoted label with no leading digit)
+            if (line.startswith('"') and not line.lstrip('"')[:1].isdigit()
+                    and "Route" not in line and "Stop" not in line):
+                break
+            section_lines.append(lines[i])
+            i += 1
+        try:
+            df = pd.read_csv(io.StringIO("\n".join(section_lines)))
+            df.columns = [str(c).strip().strip('"') for c in df.columns]
+            return df
+        except Exception:
+            return pd.DataFrame()
+
+    def _direction(name: str) -> str:
+        n = str(name)
+        if "(A)" in n or "Outbound" in n:
+            return "A"
+        if "(B)" in n or "Inbound" in n:
+            return "B"
+        return ""
+
+    # ── Stop-level section (preferred) ────────────────────────────────────────
+    stop_hdr = _find_data_header("OTP by Date, Route, and Stop")
+    if stop_hdr is not None:
+        df = _read_section(stop_hdr)
+        if not df.empty and "Route ID" in df.columns:
+            df = df[pd.to_numeric(df["Route ID"], errors="coerce").fillna(-1) > 0].copy()
+            df = df.rename(columns={
+                "Route ID":   "route_id",
+                "Route Name": "route_name",
+                "Stop ID":    "stop_id",
+                "Stop Name":  "stop_name",
+                "Average Schedule Deviation (minutes)": "avg_dev",
+                "Early Trips":   "early_trips",
+                "On-Time Trips": "ontime_trips",
+                "Late Trips":    "late_trips",
+            })
+            for col in ["early_trips", "ontime_trips", "late_trips"]:
+                df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0).astype(int)
+            df["avg_dev"] = pd.to_numeric(df.get("avg_dev", 0), errors="coerce").fillna(0)
+
+            # Normalize route names + re-derive canonical route_id BEFORE groupby
+            df = _normalize_otp_df(df)
+
+            agg = df.groupby(["route_id", "route_name", "stop_name"], sort=False).agg(
+                early_trips=("early_trips", "sum"),
+                ontime_trips=("ontime_trips", "sum"),
+                late_trips=("late_trips", "sum"),
+                avg_deviation=("avg_dev", "mean"),
+            ).reset_index()
+            agg["total_trips"] = agg["early_trips"] + agg["ontime_trips"] + agg["late_trips"]
+            total = agg["total_trips"].replace(0, 1)
+            agg["early_pct"]  = (agg["early_trips"]  / total * 100).round(2)
+            agg["ontime_pct"] = (agg["ontime_trips"] / total * 100).round(2)
+            agg["late_pct"]   = (agg["late_trips"]   / total * 100).round(2)
+            agg["avg_deviation"] = agg["avg_deviation"].round(3)
+
+            return pd.DataFrame({
+                "route_id":      agg["route_id"],
+                "route_name":    agg["route_name"],
+                "direction":     agg["route_name"].apply(_direction),
+                "stop_name":     agg["stop_name"],
+                "order":         0,
+                "early_pct":     agg["early_pct"],
+                "ontime_pct":    agg["ontime_pct"],
+                "late_pct":      agg["late_pct"],
+                "avg_deviation": agg["avg_deviation"],
+                "total_trips":   agg["total_trips"],
+            })
+
+    # ── Route-level fallback ───────────────────────────────────────────────────
+    route_hdr = _find_data_header("OTP by Date and Route")
+    if route_hdr is not None:
+        df = _read_section(route_hdr)
+        if not df.empty and "Route ID" in df.columns:
+            df = df[pd.to_numeric(df["Route ID"], errors="coerce").fillna(-1) > 0].copy()
+            df = df.rename(columns={
+                "Route ID": "route_id", "Route Name": "route_name",
+                "Early Trip Stops": "early_trips",
+                "On-Time Trip Stops": "ontime_trips",
+                "Late Trip Stops": "late_trips",
+            })
+            for col in ["early_trips", "ontime_trips", "late_trips"]:
+                df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0).astype(int)
+
+            # Normalize route names + re-derive canonical route_id BEFORE groupby
+            df = _normalize_otp_df(df)
+
+            agg = df.groupby(["route_id", "route_name"], sort=False).agg(
+                early_trips=("early_trips", "sum"),
+                ontime_trips=("ontime_trips", "sum"),
+                late_trips=("late_trips", "sum"),
+            ).reset_index()
+            agg["total_trips"] = agg["early_trips"] + agg["ontime_trips"] + agg["late_trips"]
+            total = agg["total_trips"].replace(0, 1)
+            agg["early_pct"]  = (agg["early_trips"]  / total * 100).round(2)
+            agg["ontime_pct"] = (agg["ontime_trips"] / total * 100).round(2)
+            agg["late_pct"]   = (agg["late_trips"]   / total * 100).round(2)
+
+            return pd.DataFrame({
+                "route_id":      agg["route_id"],
+                "route_name":    agg["route_name"],
+                "direction":     agg["route_name"].apply(_direction),
+                "stop_name":     "",
+                "order":         0,
+                "early_pct":     agg["early_pct"],
+                "ontime_pct":    agg["ontime_pct"],
+                "late_pct":      agg["late_pct"],
+                "avg_deviation": 0.0,
+                "total_trips":   agg["total_trips"],
+            })
+
+    raise ValueError(
+        "No OTP data section found. Expected 'OTP by Date, Route, and Stop' "
+        "or 'OTP by Date and Route' section in the file."
+    )
 
 
 # ── Smart auto-detection ───────────────────────────────────────────────────────
@@ -749,6 +1334,88 @@ def download_boardings_file(file_type: str):
     )
 
 
+# ── Month management ────────────────────────────────────────────────────────────
+
+_MONTH_FILES = [
+    "boardings_by_route_month.csv",
+    "boardings_by_month.csv",
+    "boardings_by_stop_month.csv",
+    "boardings_by_dow_month.csv",
+    "boardings_by_route_dow_month.csv",
+]
+
+
+@protected.get("/api/boardings/months")
+def list_boardings_months():
+    """Return all months present in boardings_by_route_month.csv."""
+    path = os.path.join(DATA_DIR, "boardings_by_route_month.csv")
+    if not os.path.exists(path):
+        return {"months": []}
+    try:
+        df = pd.read_csv(path)
+        if "month" not in df.columns:
+            return {"months": []}
+        months = sorted(df["month"].dropna().astype(str).unique().tolist())
+        return {"months": months}
+    except Exception:
+        return {"months": []}
+
+
+@protected.delete("/api/boardings/month/{month}")
+def delete_boardings_month(month: str):
+    """
+    Remove all data for a given month (YYYY-MM) from all boardings files
+    that contain a 'month' column.  Also recomputes boardings_by_route.csv.
+    """
+    import re as _re
+    if not _re.match(r"^\d{4}-\d{2}$", month):
+        raise HTTPException(400, f"Invalid month format '{month}'. Expected YYYY-MM.")
+
+    removed = {}
+    for fname in _MONTH_FILES:
+        path = os.path.join(DATA_DIR, fname)
+        if not os.path.exists(path):
+            continue
+        try:
+            df = pd.read_csv(path)
+            if "month" not in df.columns:
+                continue
+            before = len(df)
+            df = df[df["month"].astype(str) != month]
+            after = len(df)
+            if before != after:
+                _backup_file(fname.replace(".csv", ""))
+                df.to_csv(path, index=False)
+                removed[fname] = before - after
+        except Exception as e:
+            print(f"WARNING: could not process {fname} for month deletion: {e}")
+
+    # Recompute boardings_by_route.csv from remaining route_month data
+    rm_path = os.path.join(DATA_DIR, "boardings_by_route_month.csv")
+    route_path = os.path.join(DATA_DIR, "boardings_by_route.csv")
+    if os.path.exists(rm_path):
+        try:
+            rm_df = pd.read_csv(rm_path)
+            if not rm_df.empty and "route" in rm_df.columns:
+                by_route = rm_df.groupby("route", sort=False).agg(
+                    total_in=("total_in", "sum"),
+                    total_out=("total_out", "sum"),
+                    unique_days=("unique_days", "sum"),
+                ).reset_index()
+                by_route["avg_daily_in"]  = (by_route["total_in"]  / by_route["unique_days"].replace(0, 1)).round(1)
+                by_route["avg_daily_out"] = (by_route["total_out"] / by_route["unique_days"].replace(0, 1)).round(1)
+                by_route.to_csv(route_path, index=False)
+        except Exception as e:
+            print(f"WARNING: could not recompute boardings_by_route: {e}")
+
+    _load_boardings()
+
+    if not removed:
+        raise HTTPException(404, f"Month '{month}' not found in any boardings file.")
+
+    return {"status": "deleted", "month": month, "rows_removed": removed}
+
+
 # ── Boardings merge preview ─────────────────────────────────────────────────────
 
 @protected.post("/api/upload/boardings/{file_type}/preview")
@@ -855,6 +1522,321 @@ async def upload_otp_excel(file: UploadFile = File(...), mode: str = "merge"):
         "total_rows": len(final_df),
         "backup": backup_name,
     }
+
+
+# ── Raw AVL/APC vendor import endpoints ───────────────────────────────────────
+
+_RAW_TYPES = {
+    "avg-passenger": {
+        "label":      "Average Passenger Counts",
+        "info_file":  "boardings_by_route_month.csv",
+        "info_date":  "month",
+    },
+    "otp-trip": {
+        "label":      "Trip OTP by Route and Stop",
+        "info_file":  "otp.csv",
+        "info_date":  None,
+    },
+    "hourly-apc": {
+        "label":      "Hourly APC Counts",
+        "info_file":  "boardings_by_hour.csv",
+        "info_date":  None,
+    },
+    "arrivals": {
+        "label":      "Route Stop Arrival Times",
+        "info_file":  "raw_arrivals.csv",
+        "info_date":  None,
+    },
+}
+
+
+@protected.get("/api/data/raw/{raw_type}/info")
+def raw_import_info(raw_type: str):
+    """Return metadata about what raw data has been imported for a given vendor file type."""
+    if raw_type not in _RAW_TYPES:
+        raise HTTPException(400, f"Unknown raw type: {raw_type}")
+    cfg = _RAW_TYPES[raw_type]
+    path = os.path.join(DATA_DIR, cfg["info_file"])
+    if not os.path.exists(path):
+        return {"exists": False, "rows": 0}
+    try:
+        df = pd.read_csv(path)
+        info: dict = {"exists": True, "rows": len(df)}
+        date_col = cfg.get("info_date")
+        if date_col and date_col in df.columns:
+            vals = df[date_col].dropna().astype(str)
+            if not vals.empty:
+                info["date_range"] = {"min": str(vals.min()), "max": str(vals.max())}
+        return info
+    except Exception:
+        return {"exists": False, "rows": 0}
+
+
+@protected.post("/api/upload/raw/{raw_type}/preview")
+async def raw_upload_preview(raw_type: str, file: UploadFile = File(...)):
+    """Dry-run: parse the vendor file and return a summary without writing anything."""
+    if raw_type not in _RAW_TYPES:
+        raise HTTPException(400, f"Unknown raw type: {raw_type}")
+    content = await file.read()
+
+    try:
+        if raw_type == "avg-passenger":
+            results = _parse_avg_passenger_counts(content)
+            rm = results["boardings_by_route_month"]
+            months = sorted(rm["month"].unique()) if "month" in rm.columns else []
+            total_boardings = int(rm["total_in"].sum()) if "total_in" in rm.columns else 0
+
+            # ── Route name validation ──────────────────────────────────────────
+            known_routes: set[str] = set()
+            rm_path = os.path.join(DATA_DIR, "boardings_by_route_month.csv")
+            if os.path.exists(rm_path):
+                try:
+                    existing_rm = pd.read_csv(rm_path)
+                    if "route" in existing_rm.columns:
+                        known_routes.update(existing_rm["route"].dropna().astype(str).unique())
+                except Exception:
+                    pass
+            known_routes.update(ROUTE_NAME_ALIASES.values())
+            if "route" in rm.columns and known_routes:
+                incoming_names = set(rm["route"].dropna().astype(str).unique())
+                unrecognized = sorted(incoming_names - known_routes)
+            else:
+                unrecognized = []
+
+            response: dict = {
+                "incoming_rows":  int(sum(len(df) for df in results.values())),
+                "routes":         int(rm["route"].nunique()) if "route" in rm.columns else 0,
+                "stops":          len(results.get("boardings_by_stop", pd.DataFrame())),
+                "total_boardings": total_boardings,
+                "date_range":     {"min": months[0], "max": months[-1]} if months else None,
+                "slots_updated":  list(results.keys()),
+            }
+            if unrecognized:
+                response["warnings"] = [
+                    {
+                        "type": "unknown_route",
+                        "message": f"Route name not recognized: '{name}'.",
+                        "route_name": name,
+                    }
+                    for name in unrecognized
+                ]
+            return response
+
+        elif raw_type == "otp-trip":
+            df = _parse_otp_csv(content)
+            routes = int(df["route_name"].nunique()) if "route_name" in df.columns else 0
+            stops  = int(df["stop_name"].nunique())  if "stop_name"  in df.columns else 0
+
+            # Validate OTP route names against canonical list
+            known_routes_otp: set[str] = set()
+            rm_path2 = os.path.join(DATA_DIR, "boardings_by_route_month.csv")
+            if os.path.exists(rm_path2):
+                try:
+                    existing_rm2 = pd.read_csv(rm_path2)
+                    if "route" in existing_rm2.columns:
+                        known_routes_otp.update(existing_rm2["route"].dropna().astype(str).unique())
+                except Exception:
+                    pass
+            known_routes_otp.update(ROUTE_NAME_ALIASES.values())
+
+            otp_warnings = []
+            if "route_name" in df.columns and known_routes_otp:
+                incoming_names = set(df["route_name"].dropna().astype(str).unique())
+                for name in sorted(incoming_names - known_routes_otp):
+                    otp_warnings.append({
+                        "type": "unknown_route",
+                        "message": f"Route name not recognized: '{name}'.",
+                        "route_name": name,
+                    })
+
+            otp_response = {
+                "incoming_rows": len(df),
+                "routes":        routes,
+                "stops":         stops,
+                "slots_updated": ["otp"],
+            }
+            if otp_warnings:
+                otp_response["warnings"] = otp_warnings
+            return otp_response
+        elif raw_type == "hourly-apc":
+            results = _parse_hourly_apc(content)
+            bh = results["boardings_by_hour"]
+            total = int(bh["total_in"].sum()) if not bh.empty else 0
+            return {
+                "incoming_rows":  len(bh),
+                "total_boardings": total,
+                "slots_updated":  ["boardings_by_hour", "boardings_by_route_hour"],
+            }
+        elif raw_type == "arrivals":
+            # Just count rows (large file — don't fully parse)
+            text  = content.decode("utf-8", errors="replace")
+            nrows = max(0, text.count("\n") - 8)  # subtract ~8 header rows
+            return {
+                "incoming_rows": nrows,
+                "slots_updated": ["raw_arrivals"],
+            }
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    except Exception as e:
+        raise HTTPException(400, f"Could not parse file: {e}")
+
+
+@protected.post("/api/upload/raw/{raw_type}")
+async def raw_upload(raw_type: str, file: UploadFile = File(...)):
+    """Parse a vendor-format file and merge it into the internal boardings/OTP datasets."""
+    if raw_type not in _RAW_TYPES:
+        raise HTTPException(400, f"Unknown raw type: {raw_type}")
+    content = await file.read()
+    backup_names = []
+
+    try:
+        if raw_type == "avg-passenger":
+            results = _parse_avg_passenger_counts(content)
+
+            # If any route aliases were applied, drop stale canonical records for
+            # the affected (route, month) combinations before merging.
+            if ROUTE_NAME_ALIASES:
+                canonical_routes = set(ROUTE_NAME_ALIASES.values())
+                incoming_rm = results.get("boardings_by_route_month", pd.DataFrame())
+                if not incoming_rm.empty and "route" in incoming_rm.columns and "month" in incoming_rm.columns:
+                    affected_months = incoming_rm[
+                        incoming_rm["route"].isin(canonical_routes)
+                    ]["month"].unique()
+                    if len(affected_months):
+                        for fname in ["boardings_by_route_month.csv", "boardings_by_stop_month.csv"]:
+                            fpath = os.path.join(DATA_DIR, fname)
+                            if not os.path.exists(fpath):
+                                continue
+                            edf = pd.read_csv(fpath)
+                            if "route" in edf.columns and "month" in edf.columns:
+                                drop_mask = (
+                                    edf["route"].isin(canonical_routes) &
+                                    edf["month"].isin(affected_months)
+                                )
+                                if drop_mask.any():
+                                    edf = edf[~drop_mask]
+                                    edf.to_csv(fpath, index=False)
+
+            # Write each aggregated DataFrame, merging with existing data
+            merge_cfg = {
+                "boardings_by_route_month": (["route", "month"],            False),
+                "boardings_by_month":        (["month"],                    False),
+                "boardings_by_route_stop":   (["route", "address"],         False),
+                "boardings_by_stop":         (["route", "stop_id"],         False),
+                "boardings_by_stop_month":   (["route", "stop_id", "month"],False),
+                "boardings_by_dow_month":         (["day_num", "month"],          False),
+                "boardings_by_route_dow_month":   (["route", "day_num", "month"], False),
+                # DOW files use additive merge so totals accumulate across months
+                "boardings_by_route_dow":    (["route", "day_num"],         True),
+                "boardings_by_dow":          (["day_num"],                  True),
+            }
+            totals = {"rows_added": 0, "rows_updated": 0}
+            for name, (keys, additive) in merge_cfg.items():
+                incoming_df = results.get(name)
+                if incoming_df is None or incoming_df.empty:
+                    continue
+                path = os.path.join(DATA_DIR, f"{name}.csv")
+                backup_names.append(_backup_file(name) if os.path.exists(path) else None)
+                existing_df = pd.read_csv(path) if os.path.exists(path) else pd.DataFrame()
+                if additive:
+                    sum_cols = [c for c in ["total_in", "total_out"] if c in incoming_df.columns]
+                    final_df, added, updated = _additive_merge_df(
+                        existing_df, incoming_df, keys, sum_cols
+                    )
+                    # Recompute averages after additive merge (DOW files)
+                    if "total_in" in final_df.columns:
+                        if "total_out" in final_df.columns:
+                            # Recompute avg_in / avg_out from accumulated totals + count
+                            # Use n_days if present, else infer from ratio
+                            if "avg_in" in final_df.columns:
+                                # Store totals as source of truth; avg is display only
+                                ndays_inferred = (
+                                    final_df["total_in"] / final_df["avg_in"].replace(0, 1)
+                                ).round().clip(lower=1)
+                                final_df["avg_in"]  = (final_df["total_in"]  / ndays_inferred).round(1)
+                                final_df["avg_out"] = (final_df["total_out"] / ndays_inferred).round(1)
+                else:
+                    final_df, added, updated = _merge_boardings_df(existing_df, incoming_df, keys)
+                final_df.to_csv(path, index=False)
+                totals["rows_added"]   += added
+                totals["rows_updated"] += updated
+
+            # Recompute boardings_by_route.csv from accumulated route_month data
+            rm_path = os.path.join(DATA_DIR, "boardings_by_route_month.csv")
+            if os.path.exists(rm_path):
+                rm_df = pd.read_csv(rm_path)
+                if not rm_df.empty and "route" in rm_df.columns:
+                    by_route = rm_df.groupby("route", sort=False).agg(
+                        total_in=("total_in", "sum"),
+                        total_out=("total_out", "sum"),
+                        unique_days=("unique_days", "sum"),
+                    ).reset_index()
+                    by_route["avg_daily_in"]  = (by_route["total_in"]  / by_route["unique_days"].replace(0, 1)).round(1)
+                    by_route["avg_daily_out"] = (by_route["total_out"] / by_route["unique_days"].replace(0, 1)).round(1)
+                    by_route.to_csv(os.path.join(DATA_DIR, "boardings_by_route.csv"), index=False)
+
+            _load_boardings()
+            return {
+                "status": "imported",
+                "raw_type": raw_type,
+                "rows_added": totals["rows_added"],
+                "rows_updated": totals["rows_updated"],
+                "backups": [b for b in backup_names if b],
+            }
+
+        elif raw_type == "otp-trip":
+            incoming_df = _parse_otp_csv(content)
+            if incoming_df.empty:
+                raise HTTPException(400, "No OTP data parsed from file.")
+            path = os.path.join(DATA_DIR, "otp.csv")
+            backup = _backup_file("otp") if os.path.exists(path) else None
+            existing_df = pd.read_csv(path) if os.path.exists(path) else pd.DataFrame()
+            cfg = BOARDINGS_FILES["otp"]
+            final_df, added, updated = _merge_boardings_df(existing_df, incoming_df, cfg["key_cols"])
+            final_df.to_csv(path, index=False)
+            _load_otp()
+            return {
+                "status": "imported",
+                "raw_type": raw_type,
+                "rows_added": added,
+                "rows_updated": updated,
+                "total_rows": len(final_df),
+                "backup": backup,
+            }
+
+        elif raw_type == "hourly-apc":
+            results = _parse_hourly_apc(content)
+
+            for name, keys in [
+                ("boardings_by_hour",       ["hour"]),
+                ("boardings_by_route_hour", ["route", "hour"]),
+            ]:
+                incoming_df = results.get(name)
+                if incoming_df is None or incoming_df.empty:
+                    continue
+                path = os.path.join(DATA_DIR, f"{name}.csv")
+                _backup_file(name) if os.path.exists(path) else None
+                existing_df = pd.read_csv(path) if os.path.exists(path) else pd.DataFrame()
+                sum_cols = ["total_in", "total_out"] if "total_out" in incoming_df.columns else ["total_in"]
+                final_df, _, _ = _additive_merge_df(existing_df, incoming_df, keys, sum_cols)
+                final_df.to_csv(path, index=False)
+
+            _load_boardings()
+            return {"status": "imported", "raw_type": raw_type}
+
+        elif raw_type == "arrivals":
+            # Store raw file as-is (no transformation)
+            path = os.path.join(DATA_DIR, "raw_arrivals.csv")
+            with open(path, "wb") as f:
+                f.write(content)
+            return {"status": "imported", "raw_type": raw_type}
+
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(500, f"Import failed: {e}")
 
 
 # ── Structured import: template definitions ────────────────────────────────────
@@ -1322,6 +2304,37 @@ def get_route_shapes():
         return {}
     with open(shapes_path) as f:
         return json.load(f)
+
+
+# ── Admin-only user management ────────────────────────────────────────────────
+
+class UserCreate(BaseModel):
+    username: str
+    password: str
+
+
+@app.get("/api/admin/users", dependencies=[Depends(get_current_admin)])
+def admin_list_users():
+    return {"users": list_usernames()}
+
+
+@app.post("/api/admin/users", dependencies=[Depends(get_current_admin)], status_code=201)
+def admin_create_user(body: UserCreate):
+    if not body.username or not body.password:
+        raise HTTPException(status_code=400, detail="Username and password are required")
+    if body.username in list_usernames():
+        raise HTTPException(status_code=409, detail="Username already exists")
+    create_user(body.username, body.password)
+    return {"username": body.username}
+
+
+@app.delete("/api/admin/users/{username}", dependencies=[Depends(get_current_admin)])
+def admin_delete_user(username: str):
+    if username == "ADMIN":
+        raise HTTPException(status_code=400, detail="Cannot delete the ADMIN account")
+    if not delete_user(username):
+        raise HTTPException(status_code=404, detail="User not found")
+    return {"deleted": username}
 
 
 # ── Register protected router ──────────────────────────────────────────────────
