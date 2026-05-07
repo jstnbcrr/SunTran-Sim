@@ -1883,6 +1883,8 @@ async def raw_upload(raw_type: str, file: UploadFile = File(...)):
             incoming_df = _parse_otp_csv(content)
             if incoming_df.empty:
                 raise HTTPException(400, "No OTP data parsed from file.")
+            period = _extract_period_from_filename(file.filename or "")
+            _archive_otp(incoming_df, period)
             path = os.path.join(DATA_DIR, "otp.csv")
             backup = _backup_file("otp") if os.path.exists(path) else None
             existing_df = pd.read_csv(path) if os.path.exists(path) else pd.DataFrame()
@@ -1893,6 +1895,7 @@ async def raw_upload(raw_type: str, file: UploadFile = File(...)):
             return {
                 "status": "imported",
                 "raw_type": raw_type,
+                "period": period,
                 "rows_added": added,
                 "rows_updated": updated,
                 "total_rows": len(final_df),
