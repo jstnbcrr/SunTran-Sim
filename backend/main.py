@@ -1555,7 +1555,7 @@ def _list_otp_periods() -> list[dict]:
 # ── OTP Excel upload ────────────────────────────────────────────────────────────
 
 @protected.post("/api/upload/otp-excel")
-async def upload_otp_excel(file: UploadFile = File(...), mode: str = "merge"):
+async def upload_otp_excel(file: UploadFile = File(...), mode: str = "merge", period: str = None):
     """Accept OTP .xlsx (Route_OTP_By_Route format) and merge into otp.csv."""
     content = await file.read()
     try:
@@ -1565,7 +1565,7 @@ async def upload_otp_excel(file: UploadFile = File(...), mode: str = "merge"):
     if incoming.empty:
         raise HTTPException(400, "No data found in COMBINED sheet")
 
-    period = _extract_period_from_filename(file.filename or "")
+    period = period or _extract_period_from_filename(file.filename or "")
     _archive_otp(incoming, period)
 
     path = os.path.join(DATA_DIR, "otp.csv")
@@ -1777,7 +1777,7 @@ async def raw_upload_preview(raw_type: str, file: UploadFile = File(...)):
 
 
 @protected.post("/api/upload/raw/{raw_type}")
-async def raw_upload(raw_type: str, file: UploadFile = File(...)):
+async def raw_upload(raw_type: str, file: UploadFile = File(...), period: str = None):
     """Parse a vendor-format file and merge it into the internal boardings/OTP datasets."""
     if raw_type not in _RAW_TYPES:
         raise HTTPException(400, f"Unknown raw type: {raw_type}")
@@ -1883,7 +1883,7 @@ async def raw_upload(raw_type: str, file: UploadFile = File(...)):
             incoming_df = _parse_otp_csv(content)
             if incoming_df.empty:
                 raise HTTPException(400, "No OTP data parsed from file.")
-            period = _extract_period_from_filename(file.filename or "")
+            period = period or _extract_period_from_filename(file.filename or "")
             _archive_otp(incoming_df, period)
             path = os.path.join(DATA_DIR, "otp.csv")
             backup = _backup_file("otp") if os.path.exists(path) else None

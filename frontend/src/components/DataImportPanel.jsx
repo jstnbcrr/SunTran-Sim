@@ -380,6 +380,10 @@ function RawImportCard({ rawType, label, filename, desc, outputs, onRefreshAll }
   const [preview,     setPreview] = useState(null);
   const [error,       setError]   = useState(null);
   const [pendingFile, setPending] = useState(null);
+  const [otpPeriod,   setOtpPeriod] = useState(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+  });
   const inputRef = useRef();
 
   useEffect(() => {
@@ -408,7 +412,7 @@ function RawImportCard({ rawType, label, filename, desc, outputs, onRefreshAll }
     if (!pendingFile) return;
     setStage("importing");
     try {
-      await uploadRawImport(rawType, pendingFile);
+      await uploadRawImport(rawType, pendingFile, rawType === "otp-trip" ? otpPeriod : null);
       setInfo(i => ({ ...i, exists: true }));
       setStage("done");
       setPreview(null);
@@ -452,6 +456,25 @@ function RawImportCard({ rawType, label, filename, desc, outputs, onRefreshAll }
                 </span>
               ))}
             </div>
+            {rawType === "otp-trip" && (
+              <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ fontSize: 11, color: "var(--muted)" }}>Archive as period:</span>
+                <input
+                  type="month"
+                  value={otpPeriod}
+                  onChange={e => setOtpPeriod(e.target.value)}
+                  style={{
+                    fontSize: 11, padding: "3px 8px",
+                    background: "var(--surface2)", color: "var(--text)",
+                    border: "1px solid var(--border)", borderRadius: 6,
+                    colorScheme: "dark",
+                  }}
+                />
+                <span style={{ fontSize: 10, color: "var(--muted)" }}>
+                  (sets the label in the Metrics OTP selector)
+                </span>
+              </div>
+            )}
             {info && (
               <div style={{ fontSize: 10, color: "var(--muted)", marginTop: 6 }}>
                 {info.exists

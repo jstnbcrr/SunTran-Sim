@@ -189,10 +189,11 @@ export const previewRawImport = (fileType, file) => {
   return api.post(`/upload/raw/${fileType}/preview`, form).then(r => r.data);
 };
 
-export const uploadRawImport = (fileType, file) => {
+export const uploadRawImport = (fileType, file, period = null) => {
   const form = new FormData();
   form.append("file", file);
-  return api.post(`/upload/raw/${fileType}`, form).then(r => r.data);
+  const url = period ? `/upload/raw/${fileType}?period=${encodeURIComponent(period)}` : `/upload/raw/${fileType}`;
+  return api.post(url, form).then(r => r.data);
 };
 
 // ── Month management ──────────────────────────────────────────────────────────
