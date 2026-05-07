@@ -150,6 +150,12 @@ def _startup():
     if changed or not os.path.exists(users_file):
         with open(users_file, "w") as f:
             json.dump(users, f, indent=2)
+
+    # If still no users (no env vars set, no users.json), auto-create one
+    # and print the generated password so the operator can log in immediately.
+    from auth import ensure_default_user
+    ensure_default_user()
+
     _load_data()
 
 

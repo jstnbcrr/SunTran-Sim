@@ -3,6 +3,8 @@
 import bcrypt
 import json
 import os
+import secrets
+import string
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
@@ -31,6 +33,33 @@ def _load_users() -> dict[str, str]:
         return {}
     with open(USERS_FILE) as f:
         return json.load(f)
+
+
+def ensure_default_user() -> None:
+    """If no users exist yet, create a default admin account and print
+    the generated password to stdout so the operator can log in on first boot."""
+    if os.path.exists(USERS_FILE):
+        try:
+            users = json.loads(open(USERS_FILE).read())
+            if users:
+                return  # at least one user already exists
+        except Exception:
+            pass
+
+    alphabet = string.ascii_letters + string.digits
+    password = "".join(secrets.choice(alphabet) for _ in range(12))
+    hashed = bcrypt.hashpw(password.encode(), bcrypt.gensalt(12)).decode()
+    _save_users({"admin": hashed})
+
+    border = "=" * 52
+    print(f"\n{border}")
+    print("  SUNTRAN FIRST-RUN SETUP")
+    print(f"  Default account created:")
+    print(f"    Username : admin")
+    print(f"    Password : {password}")
+    print(f"  Log in at http://localhost:5173")
+    print(f"  Change this password after your first login.")
+    print(f"{border}\n")
 
 
 def _save_users(users: dict[str, str]) -> None:
