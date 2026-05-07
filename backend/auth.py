@@ -3,8 +3,6 @@
 import bcrypt
 import json
 import os
-import secrets
-import string
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
@@ -46,8 +44,7 @@ def ensure_default_user() -> None:
         except Exception:
             pass
 
-    alphabet = string.ascii_letters + string.digits
-    password = "".join(secrets.choice(alphabet) for _ in range(12))
+    password = "suntran"
     hashed = bcrypt.hashpw(password.encode(), bcrypt.gensalt(12)).decode()
     _save_users({"admin": hashed})
 
@@ -56,9 +53,8 @@ def ensure_default_user() -> None:
     print("  SUNTRAN FIRST-RUN SETUP")
     print(f"  Default account created:")
     print(f"    Username : admin")
-    print(f"    Password : {password}")
+    print(f"    Password : suntran")
     print(f"  Log in at http://localhost:5173")
-    print(f"  Change this password after your first login.")
     print(f"{border}\n")
 
 

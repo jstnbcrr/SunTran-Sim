@@ -32,7 +32,7 @@ That is it. On the very first run, the app will generate a login password and pr
   SUNTRAN FIRST-RUN SETUP
   Default account created:
     Username : admin
-    Password : aBc1dEf2gHi3
+    Password : suntran
   Log in at http://localhost:5173
 ====================================================
 ```
