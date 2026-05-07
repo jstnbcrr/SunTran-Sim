@@ -41,7 +41,9 @@ protected = APIRouter(dependencies=[Depends(get_current_user)])
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
 BACKUP_DIR = os.path.join(DATA_DIR, "backups")
+OTP_ARCHIVE_DIR = os.path.join(DATA_DIR, "otp_archive")
 os.makedirs(BACKUP_DIR, exist_ok=True)
+os.makedirs(OTP_ARCHIVE_DIR, exist_ok=True)
 
 REQUIRED_CSV_COLUMNS = {
     "stops": {"stop_id", "stop_name", "latitude", "longitude"},
@@ -1191,6 +1193,9 @@ def _smart_import_file(content: bytes, filename: str, mode: str = "merge") -> di
             return {"filename": filename, "status": "error", "error": str(e),
                     "detected_as": "Excel", "label": "Excel"}
 
+        period = _extract_period_from_filename(filename)
+        _archive_otp(incoming, period)
+
         path = os.path.join(DATA_DIR, "otp.csv")
         backup_name = _backup_file("otp") if os.path.exists(path) else None
         if mode == "replace":
@@ -1203,7 +1208,7 @@ def _smart_import_file(content: bytes, filename: str, mode: str = "merge") -> di
         _load_otp()
         return {"filename": filename, "status": "imported", "detected_as": file_type,
                 "label": label, "rows_added": added, "rows_updated": updated,
-                "total_rows": len(final_df), "backup": backup_name}
+                "total_rows": len(final_df), "backup": backup_name, "period": period}
 
     # ── CSV ────────────────────────────────────────────────────────────────────
     try:
@@ -1495,6 +1500,58 @@ async def upload_boardings(
     }
 
 
+# ── OTP period helpers ─────────────────────────────────────────────────────────
+
+_MONTH_ABBR = {
+    "jan": "01", "feb": "02", "mar": "03", "apr": "04",
+    "may": "05", "jun": "06", "jul": "07", "aug": "08",
+    "sep": "09", "oct": "10", "nov": "11", "dec": "12",
+}
+
+def _extract_period_from_filename(filename: str) -> str:
+    """Best-effort: pull a YYYY-MM period out of a filename.
+    Falls back to today's YYYY-MM if nothing is found."""
+    import re
+    from datetime import date
+    name = filename.lower()
+    # Try YYYY-MM or MM-YYYY or YYYY_MM
+    m = re.search(r"(20\d{2})[-_]?(0[1-9]|1[0-2])", name)
+    if m:
+        return f"{m.group(1)}-{m.group(2)}"
+    m = re.search(r"(0[1-9]|1[0-2])[-_]?(20\d{2})", name)
+    if m:
+        return f"{m.group(2)}-{m.group(1)}"
+    # Try month name + year
+    for abbr, num in _MONTH_ABBR.items():
+        if abbr in name:
+            yr = re.search(r"20\d{2}", name)
+            year = yr.group(0) if yr else str(date.today().year)
+            return f"{year}-{num}"
+    return date.today().strftime("%Y-%m")
+
+
+def _archive_otp(df: pd.DataFrame, period: str) -> None:
+    """Save a copy of an OTP DataFrame to the archive folder."""
+    path = os.path.join(OTP_ARCHIVE_DIR, f"otp_{period}.csv")
+    df.to_csv(path, index=False)
+
+
+def _list_otp_periods() -> list[dict]:
+    """Return sorted list of archived OTP periods with metadata."""
+    periods = []
+    for fname in os.listdir(OTP_ARCHIVE_DIR):
+        if not fname.startswith("otp_") or not fname.endswith(".csv"):
+            continue
+        period = fname[4:-4]  # strip "otp_" prefix and ".csv" suffix
+        fpath = os.path.join(OTP_ARCHIVE_DIR, fname)
+        try:
+            rows = sum(1 for _ in open(fpath)) - 1
+        except Exception:
+            rows = 0
+        periods.append({"period": period, "rows": rows})
+    return sorted(periods, key=lambda x: x["period"])
+
+
 # ── OTP Excel upload ────────────────────────────────────────────────────────────
 
 @protected.post("/api/upload/otp-excel")
@@ -1507,6 +1564,9 @@ async def upload_otp_excel(file: UploadFile = File(...), mode: str = "merge"):
         raise HTTPException(400, f"Could not parse OTP Excel: {e}")
     if incoming.empty:
         raise HTTPException(400, "No data found in COMBINED sheet")
+
+    period = _extract_period_from_filename(file.filename or "")
+    _archive_otp(incoming, period)
 
     path = os.path.join(DATA_DIR, "otp.csv")
     backup_name = _backup_file("otp") if os.path.exists(path) else None
@@ -1523,11 +1583,40 @@ async def upload_otp_excel(file: UploadFile = File(...), mode: str = "merge"):
 
     return {
         "status": "uploaded",
+        "period": period,
         "rows_added": added,
         "rows_updated": updated,
         "total_rows": len(final_df),
         "backup": backup_name,
     }
+
+
+# ── OTP archive endpoints ──────────────────────────────────────────────────────
+
+@protected.get("/api/otp/periods")
+def get_otp_periods():
+    """List all archived OTP periods."""
+    return _list_otp_periods()
+
+
+@protected.get("/api/otp/period/{period}")
+def get_otp_period(period: str):
+    """Return OTP data for a specific archived period (format: YYYY-MM)."""
+    path = os.path.join(OTP_ARCHIVE_DIR, f"otp_{period}.csv")
+    if not os.path.exists(path):
+        raise HTTPException(404, f"No OTP data found for period {period}")
+    df = pd.read_csv(path)
+    return df.fillna("").to_dict(orient="records")
+
+
+@protected.delete("/api/otp/period/{period}")
+def delete_otp_period(period: str):
+    """Remove an archived OTP period."""
+    path = os.path.join(OTP_ARCHIVE_DIR, f"otp_{period}.csv")
+    if not os.path.exists(path):
+        raise HTTPException(404, f"No OTP data found for period {period}")
+    os.remove(path)
+    return {"status": "deleted", "period": period}
 
 
 # ── Raw AVL/APC vendor import endpoints ───────────────────────────────────────

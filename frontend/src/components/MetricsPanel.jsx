@@ -1,9 +1,9 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Cell, Legend,
 } from "recharts";
-import { exportMetricsCsv } from "../api/client";
+import { exportMetricsCsv, getOtpPeriods, getOtpPeriod, deleteOtpPeriod } from "../api/client";
 
 function downloadBlob(blob, filename) {
   const url = URL.createObjectURL(blob);
@@ -1132,10 +1132,110 @@ function RouteEfficiencyChart({ routes, ridership }) {
   );
 }
 
+// ─── OTP Period Selector ──────────────────────────────────────────────────────
+
+const MONTH_NAMES_OTP = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const fmtOtpPeriod = (p) => {
+  if (!p) return p;
+  const [y, m] = String(p).split("-");
+  return `${MONTH_NAMES_OTP[parseInt(m, 10) - 1]} ${y}`;
+};
+
+function OtpPeriodSelector({ activePeriod, onSelect }) {
+  const [periods, setPeriods] = useState([]);
+  const [deleting, setDeleting] = useState(null);
+
+  useEffect(() => {
+    getOtpPeriods().then(setPeriods).catch(() => {});
+  }, []);
+
+  const handleDelete = async (e, period) => {
+    e.stopPropagation();
+    if (!window.confirm(`Remove ${fmtOtpPeriod(period)} OTP data?`)) return;
+    setDeleting(period);
+    try {
+      await deleteOtpPeriod(period);
+      const updated = await getOtpPeriods();
+      setPeriods(updated);
+      if (activePeriod === period) onSelect(null);
+    } finally {
+      setDeleting(null);
+    }
+  };
+
+  if (!periods.length) return null;
+
+  return (
+    <div style={{
+      display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center",
+      marginBottom: 16, padding: "10px 14px",
+      background: "rgba(49,130,206,0.05)",
+      border: "1px solid rgba(49,130,206,0.2)",
+      borderRadius: 10,
+    }}>
+      <span style={{ fontSize: 11, color: "var(--muted)", marginRight: 4, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+        OTP Period
+      </span>
+      <button
+        onClick={() => onSelect(null)}
+        style={{
+          padding: "3px 12px", borderRadius: 20, fontSize: 11, fontWeight: 600, cursor: "pointer",
+          border: `1px solid ${!activePeriod ? "#3182ce" : "var(--border)"}`,
+          background: !activePeriod ? "rgba(49,130,206,0.15)" : "transparent",
+          color: !activePeriod ? "#3182ce" : "var(--muted)",
+        }}
+      >
+        All Time
+      </button>
+      {periods.map(({ period }) => {
+        const active = activePeriod === period;
+        return (
+          <div key={period} style={{ display: "flex", alignItems: "center", gap: 2 }}>
+            <button
+              onClick={() => onSelect(active ? null : period)}
+              style={{
+                padding: "3px 12px", borderRadius: "20px 0 0 20px", fontSize: 11, fontWeight: 600, cursor: "pointer",
+                border: `1px solid ${active ? "#3182ce" : "var(--border)"}`,
+                borderRight: "none",
+                background: active ? "rgba(49,130,206,0.15)" : "transparent",
+                color: active ? "#3182ce" : "var(--muted)",
+              }}
+            >
+              {fmtOtpPeriod(period)}
+            </button>
+            <button
+              onClick={(e) => handleDelete(e, period)}
+              disabled={deleting === period}
+              title="Remove this period"
+              style={{
+                padding: "3px 7px", borderRadius: "0 20px 20px 0", fontSize: 10, cursor: "pointer",
+                border: `1px solid ${active ? "#3182ce" : "var(--border)"}`,
+                background: active ? "rgba(49,130,206,0.15)" : "transparent",
+                color: "var(--muted)",
+              }}
+            >
+              ×
+            </button>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 // ─── MetricsPanel (root export) ──────────────────────────────────────────────
 
 export default function MetricsPanel({ metrics, simResult, routes, otp, simulatedRouteIds }) {
   const [activeModal, setActiveModal] = useState(null);
+  const [otpPeriod, setOtpPeriod]     = useState(null);   // null = all-time
+  const [periodOtp, setPeriodOtp]     = useState(null);   // loaded on demand
+
+  useEffect(() => {
+    if (!otpPeriod) { setPeriodOtp(null); return; }
+    getOtpPeriod(otpPeriod).then(setPeriodOtp).catch(() => setPeriodOtp(null));
+  }, [otpPeriod]);
+
+  const activeOtp = periodOtp ?? otp;
 
   const handleExport = async () => {
     const blob = await exportMetricsCsv();
@@ -1185,13 +1285,10 @@ export default function MetricsPanel({ metrics, simResult, routes, otp, simulate
       </div>
 
       {/* Network Health Overview */}
-      <NetworkHealthBanner otp={otp} />
+      <NetworkHealthBanner otp={activeOtp} />
 
       {/* Simulation comparison */}
       {simResult && <ComparisonSection simResult={simResult} />}
-
-      {/* OTP Visual Chart */}
-      <OtpVisualChart otp={otp} />
 
       {/* Route Efficiency Chart */}
       <RouteEfficiencyChart
@@ -1202,17 +1299,17 @@ export default function MetricsPanel({ metrics, simResult, routes, otp, simulate
       {/* Ridership Summary */}
       <RidershipSection ridership={metrics.ridership_summary} simulatedRouteIds={simulatedRouteIds} />
 
-      {/* OTP scorecard — all-time */}
-      <OtpScorecard otp={otp} />
-
       {/* Employment hub reference — planning context */}
       <HubAccessSection
         hubs={metrics.employment_hub_access}
         title="Employment Hub Reference"
       />
 
-      {/* OTP per-stop detail table */}
-      <OtpSection otp={otp} />
+      {/* OTP period selector + all OTP charts */}
+      <OtpPeriodSelector activePeriod={otpPeriod} onSelect={setOtpPeriod} />
+      <OtpVisualChart otp={activeOtp} />
+      <OtpScorecard otp={activeOtp} />
+      <OtpSection otp={activeOtp} />
     </div>
   );
 }

@@ -202,3 +202,9 @@ export const getBoardingsMonths = () =>
 
 export const deleteBoardingsMonth = (month) =>
   api.delete(`/boardings/month/${month}`).then(r => r.data);
+
+// ── OTP archive ───────────────────────────────────────────────────────────────
+
+export const getOtpPeriods   = ()       => api.get("/otp/periods").then(r => r.data);
+export const getOtpPeriod    = (period) => api.get(`/otp/period/${period}`).then(r => r.data);
+export const deleteOtpPeriod = (period) => api.delete(`/otp/period/${period}`).then(r => r.data);
