@@ -7,6 +7,7 @@ import os
 import time
 import threading
 import webbrowser
+import mimetypes
 
 import uvicorn
 
@@ -15,12 +16,11 @@ URL  = f"http://localhost:{PORT}"
 
 
 def _open_browser():
-    """Wait for the server to be ready, then open the default browser."""
-    for _ in range(30):          # try for up to 15 seconds
+    for _ in range(30):
         time.sleep(0.5)
         try:
             import urllib.request
-            urllib.request.urlopen(f"{URL}/api/stops", timeout=1)
+            urllib.request.urlopen(f"{URL}/health", timeout=1)
             break
         except Exception:
             continue
@@ -28,42 +28,74 @@ def _open_browser():
 
 
 def _seed_data():
-    """
-    On first run copy the bundled starter data (routes, stops, hubs) into the
-    writable data folder that lives next to the exe.  Skip if already present.
-    """
     if not getattr(sys, "frozen", False):
         return
-
     exe_dir  = os.path.dirname(sys.executable)
     data_dir = os.path.join(exe_dir, "data")
     os.makedirs(data_dir, exist_ok=True)
-
-    # _MEIPASS is the temp folder where PyInstaller unpacks bundled files
     seed_dir = os.path.join(sys._MEIPASS, "data_seed")
     if not os.path.isdir(seed_dir):
         return
-
+    import shutil
     for fname in os.listdir(seed_dir):
         dest = os.path.join(data_dir, fname)
         if not os.path.exists(dest):
-            import shutil
             shutil.copy2(os.path.join(seed_dir, fname), dest)
 
 
 if __name__ == "__main__":
     _seed_data()
 
-    print("=" * 48)
-    print("  SunTran Transit Analysis Tool")
-    print(f"  Starting server at {URL}")
-    print("  Close this window to stop the app.")
-    print("=" * 48)
+    print("=" * 48, flush=True)
+    print("  SunTran Transit Analysis Tool", flush=True)
+    print(f"  Opening at {URL}", flush=True)
+    print("  Close this window to stop.", flush=True)
+    print("=" * 48, flush=True)
 
     threading.Thread(target=_open_browser, daemon=True).start()
 
+    from main import app
+
+    # When frozen, add middleware to FastAPI's own stack so it
+    # intercepts requests before they hit the router.
+    if getattr(sys, "frozen", False):
+        static_dir = os.path.join(sys._MEIPASS, "static")
+        print(f"  static_dir={static_dir}  exists={os.path.isdir(static_dir)}", flush=True)
+
+        if os.path.isdir(static_dir):
+            from starlette.middleware.base import BaseHTTPMiddleware
+            from starlette.requests import Request
+            from starlette.responses import FileResponse, Response
+
+            _static_dir = static_dir  # capture in closure
+
+            class SPAMiddleware(BaseHTTPMiddleware):
+                async def dispatch(self, request: Request, call_next):
+                    path = request.url.path
+
+                    # API routes — pass straight through
+                    if path.startswith("/api/") or path in ("/health", "/docs", "/openapi.json"):
+                        return await call_next(request)
+
+                    # Try real static file
+                    rel = path.lstrip("/")
+                    if rel:
+                        fp = os.path.join(_static_dir, rel)
+                        if os.path.isfile(fp):
+                            return FileResponse(fp)
+
+                    # SPA fallback
+                    idx = os.path.join(_static_dir, "index.html")
+                    if os.path.isfile(idx):
+                        return FileResponse(idx)
+
+                    return await call_next(request)
+
+            app.add_middleware(SPAMiddleware)
+            print("  SPAMiddleware added to FastAPI stack", flush=True)
+
     uvicorn.run(
-        "main:app",
+        app,
         host="127.0.0.1",
         port=PORT,
         log_level="warning",

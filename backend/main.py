@@ -2444,16 +2444,9 @@ def admin_delete_user(username: str):
 # ── Register protected router ──────────────────────────────────────────────────
 app.include_router(protected)
 
-# ── Serve built React frontend (production / PyInstaller) ─────────────────────
-if getattr(_sys, "frozen", False):
-    # Bundled exe: static files are in a 'static' folder next to the exe
-    STATIC_DIR = os.path.join(os.path.dirname(_sys.executable), "static")
-else:
+# ── Serve built React frontend (non-frozen / dev mode) ────────────────────────
+# When frozen (PyInstaller), static files are mounted in run.py with the correct _MEIPASS path.
+if not getattr(_sys, "frozen", False):
     STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
-
-if os.path.isdir(STATIC_DIR):
-    app.mount("/assets", StaticFiles(directory=os.path.join(STATIC_DIR, "assets")), name="assets")
-
-    @app.get("/{full_path:path}")
-    async def serve_spa(full_path: str):
-        return FileResponse(os.path.join(STATIC_DIR, "index.html"))
+    if os.path.isdir(STATIC_DIR):
+        app.mount("/", StaticFiles(directory=STATIC_DIR, html=True), name="spa")
