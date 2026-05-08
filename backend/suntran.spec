@@ -18,10 +18,11 @@ a = Analysis(
     datas=[
         # Bundled React build
         (STATIC, "static"),
-        # Seed data (routes, stops, hubs) — copied to writable location on first run
+        # Seed data (routes, stops, hubs, road-following geometry) — copied to writable location on first run
         (os.path.join(DATA, "routes.csv"),          "data_seed"),
         (os.path.join(DATA, "stops.csv"),           "data_seed"),
         (os.path.join(DATA, "employment_hubs.csv"), "data_seed"),
+        (os.path.join(DATA, "route_shapes.json"),   "data_seed"),
     ],
     hiddenimports=[
         # uvicorn internals
