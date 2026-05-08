@@ -3,7 +3,10 @@ name: Build Windows Executable
 on:
   release:
     types: [created]
-  workflow_dispatch:
+  workflow_dispatch:   # allow manual trigger from GitHub UI
+
+permissions:
+  contents: write
 
 jobs:
   build-windows:
@@ -25,22 +28,25 @@ jobs:
         with:
           node-version: "20"
 
-      - name: Install dependencies
-        run: pip install -r backend/requirements.txt pyinstaller
+      - name: Install Python dependencies + PyInstaller
+        run: |
+          pip install -r backend/requirements.txt pyinstaller
 
-      - name: Build
+      - name: Build frontend + package exe
         run: python build_exe.py
 
-      - name: Add START.bat launcher
+      - name: Add Windows launcher (START.bat)
         shell: pwsh
         run: |
-          "@echo off`r`ncd /d `"%~dp0`"`r`nstart SunTran.exe`r`n" | Set-Content dist\SunTran\START.bat
+          $bat = "@echo off`r`ncd /d `"%~dp0`"`r`nstart SunTran.exe`r`n"
+          Set-Content -Path "dist\SunTran\START.bat" -Value $bat
 
-      - name: Zip
+      - name: Zip output
         shell: pwsh
-        run: Compress-Archive -Path dist\SunTran\* -DestinationPath dist\SunTran-Windows.zip
+        run: |
+          Compress-Archive -Path dist\SunTran\* -DestinationPath dist\SunTran-Windows.zip
 
-      - name: Upload to release
+      - name: Upload to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           files: dist/SunTran-Windows.zip
