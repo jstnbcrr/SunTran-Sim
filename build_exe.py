@@ -28,6 +28,9 @@ DIST    = os.path.join(ROOT, "dist", "SunTran")
 
 
 def run(cmd, cwd=None):
+    # On Windows, npm is npm.cmd
+    if sys.platform == "win32" and cmd[0] == "npm":
+        cmd = ["npm.cmd"] + cmd[1:]
     print(f"\n>>> {' '.join(cmd)}")
     result = subprocess.run(cmd, cwd=cwd)
     if result.returncode != 0:
