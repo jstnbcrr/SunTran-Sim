@@ -62,8 +62,16 @@ def main():
     run([sys.executable, "-m", "PyInstaller", spec, "--clean", "--noconfirm"],
         cwd=ROOT)
 
-    # ── 3. Clean up temp files ───────────────────────────
+    # ── 3. Add Mac launcher and clean up ────────────────────
     print("\n[3/3] Cleaning up...")
+
+    # Mac: add a START.command so double-clicking works in Finder
+    if sys.platform != "win32":
+        launcher = os.path.join(DIST, "START.command")
+        with open(launcher, "w") as f:
+            f.write('#!/bin/bash\ncd "$(dirname "$0")"\n./SunTran\n')
+        os.chmod(launcher, 0o755)
+
     build_dir = os.path.join(ROOT, "build")
     if os.path.exists(build_dir):
         shutil.rmtree(build_dir)
