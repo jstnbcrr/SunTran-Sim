@@ -56,5 +56,11 @@ frontend/.vite/
 # ── Claude internal worktrees ─────────────────────────────────────────────────
 .claude/
 
+# ── PyInstaller build output ──────────────────────────────────────────────────
+dist/
+build/
+backend/static/
+*.spec.bak
+
 # ── macOS ─────────────────────────────────────────────────────────────────────
 .DS_Store

@@ -39,7 +39,13 @@ app.add_middleware(
 # All routes on this router require a valid JWT token
 protected = APIRouter(dependencies=[Depends(get_current_user)])
 
-DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
+import sys as _sys
+if getattr(_sys, "frozen", False):
+    # Running as a PyInstaller bundle — data lives next to the .exe
+    DATA_DIR = os.path.join(os.path.dirname(_sys.executable), "data")
+else:
+    DATA_DIR = os.environ.get("SUNTRAN_DATA_DIR") or os.path.join(os.path.dirname(__file__), "..", "data")
+
 BACKUP_DIR = os.path.join(DATA_DIR, "backups")
 OTP_ARCHIVE_DIR = os.path.join(DATA_DIR, "otp_archive")
 os.makedirs(BACKUP_DIR, exist_ok=True)
@@ -2438,8 +2444,13 @@ def admin_delete_user(username: str):
 # ── Register protected router ──────────────────────────────────────────────────
 app.include_router(protected)
 
-# ── Serve built React frontend (production) ────────────────────────────────────
-STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
+# ── Serve built React frontend (production / PyInstaller) ─────────────────────
+if getattr(_sys, "frozen", False):
+    # Bundled exe: static files are in a 'static' folder next to the exe
+    STATIC_DIR = os.path.join(os.path.dirname(_sys.executable), "static")
+else:
+    STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
+
 if os.path.isdir(STATIC_DIR):
     app.mount("/assets", StaticFiles(directory=os.path.join(STATIC_DIR, "assets")), name="assets")
 
