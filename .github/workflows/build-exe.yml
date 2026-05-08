@@ -1,0 +1,49 @@
+name: Build Windows Executable
+
+on:
+  release:
+    types: [created]
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: render-deployment
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        run: pip install -r backend/requirements.txt pyinstaller
+
+      - name: Build
+        run: python build_exe.py
+
+      - name: Add START.bat launcher
+        shell: pwsh
+        run: |
+          "@echo off`r`ncd /d `"%~dp0`"`r`nstart SunTran.exe`r`n" | Set-Content dist\SunTran\START.bat
+
+      - name: Zip
+        shell: pwsh
+        run: Compress-Archive -Path dist\SunTran\* -DestinationPath dist\SunTran-Windows.zip
+
+      - name: Upload to release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/SunTran-Windows.zip
+          tag_name: v1.0.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
