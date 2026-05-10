@@ -4,33 +4,9 @@
 .env.*.local
 backend/users.json          # real user credentials — see users.json.example
 
-# ── Real SunTran operational data ─────────────────────────────────────────────
-# These files contain live ridership, OTP, and GPS data provided by SunTran.
-# Send them separately alongside the repo link. The app starts without them
-# but charts will be empty until data is imported through the Import tab.
-data/ridership.csv
-data/otp.csv
-data/raw_arrivals.csv
-data/stops_missing_coords.csv
-data/boardings_by_stop.csv
-data/boardings_by_route.csv
-data/boardings_by_dow.csv
-data/boardings_by_month.csv
-data/boardings_by_hour.csv
-data/boardings_by_route_dow.csv
-data/boardings_by_route_month.csv
-data/boardings_by_route_stop.csv
-data/boardings_by_route_hour.csv
-data/boardings_by_dow_hour.csv
-data/boardings_by_route_dow_hour.csv
-data/boardings_by_route_stop_hour.csv
-data/boardings_by_stop_month.csv
-data/boardings_by_dow_month.csv
-data/boardings_by_route_dow_month.csv
-
-# ── Auto-generated backups and cache ──────────────────────────────────────────
+# ── Auto-generated backups ────────────────────────────────────────────────────
+# Backups can grow large and are user-specific; not worth committing.
 data/backups/
-data/geocode_cache.json
 
 # ── Temporary and scratch files ───────────────────────────────────────────────
 *.bak

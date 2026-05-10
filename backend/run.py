@@ -37,10 +37,23 @@ def _seed_data():
     if not os.path.isdir(seed_dir):
         return
     import shutil
-    for fname in os.listdir(seed_dir):
-        dest = os.path.join(data_dir, fname)
-        if not os.path.exists(dest):
-            shutil.copy2(os.path.join(seed_dir, fname), dest)
+    for entry in os.listdir(seed_dir):
+        src  = os.path.join(seed_dir, entry)
+        dest = os.path.join(data_dir, entry)
+        if os.path.isdir(src):
+            # Recursively seed subdirectories (e.g. otp_archive/),
+            # only filling in files that don't already exist.
+            for root, _dirs, files in os.walk(src):
+                rel  = os.path.relpath(root, src)
+                ddir = os.path.join(dest, rel) if rel != "." else dest
+                os.makedirs(ddir, exist_ok=True)
+                for f in files:
+                    dfp = os.path.join(ddir, f)
+                    if not os.path.exists(dfp):
+                        shutil.copy2(os.path.join(root, f), dfp)
+        else:
+            if not os.path.exists(dest):
+                shutil.copy2(src, dest)
 
 
 if __name__ == "__main__":

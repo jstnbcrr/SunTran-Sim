@@ -15,15 +15,24 @@ a = Analysis(
     [os.path.join(BACKEND, "run.py")],
     pathex=[BACKEND],
     binaries=[],
-    datas=[
-        # Bundled React build
-        (STATIC, "static"),
-        # Seed data (routes, stops, hubs, road-following geometry) — copied to writable location on first run
-        (os.path.join(DATA, "routes.csv"),          "data_seed"),
-        (os.path.join(DATA, "stops.csv"),           "data_seed"),
-        (os.path.join(DATA, "employment_hubs.csv"), "data_seed"),
-        (os.path.join(DATA, "route_shapes.json"),   "data_seed"),
-    ],
+    datas=(
+        [
+            # Bundled React build
+            (STATIC, "static"),
+        ]
+        # Seed every flat file in /data (excluding the backups subfolder) plus
+        # the otp_archive folder. Copied to a writable data/ dir on first run.
+        + [
+            (os.path.join(DATA, f), "data_seed")
+            for f in os.listdir(DATA)
+            if os.path.isfile(os.path.join(DATA, f))
+        ]
+        + (
+            [(os.path.join(DATA, "otp_archive"), "data_seed/otp_archive")]
+            if os.path.isdir(os.path.join(DATA, "otp_archive"))
+            else []
+        )
+    ),
     hiddenimports=[
         # uvicorn internals
         "uvicorn.logging",

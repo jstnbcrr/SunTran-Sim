@@ -1,0 +1,813 @@
+{
+  "449 North 2450 East": {
+    "lat": 37.112429,
+    "lon": -113.531873,
+    "query": "449 North 2450 East, St George, Utah, USA"
+  },
+  "Security Service Credit Union": null,
+  "245 North 2450 East": {
+    "lat": 37.1116748,
+    "lon": -113.5318939,
+    "query": "245 North 2450 East, St George, Utah, USA"
+  },
+  "Barnes and Noble": {
+    "lat": 37.116049,
+    "lon": -113.545562,
+    "query": "1770 Red Cliffs Drive, St George, Utah (Red Cliffs Mall area)"
+  },
+  "110 South Mall Drive": {
+    "lat": 37.0845503,
+    "lon": -113.5842796,
+    "query": "110 South Mall Drive, St George, Utah, USA"
+  },
+  "25 North 2450 East": {
+    "lat": 37.1096401,
+    "lon": -113.531848,
+    "query": "25 North 2450 East, St George, Utah, USA"
+  },
+  "40 North Mall Drive": {
+    "lat": 37.1025697,
+    "lon": -113.5399584,
+    "query": "40 North Mall Drive, St George, Utah, USA"
+  },
+  "Deseret Industries": {
+    "lat": 37.1236684,
+    "lon": -113.5310167,
+    "query": "Deseret Industries, St George, Utah, USA"
+  },
+  "Fossil Ridge School": {
+    "lat": 37.1021131,
+    "lon": -113.5378781,
+    "query": "Fossil Ridge School, St George, Utah, USA"
+  },
+  "Good Shepherd Church": {
+    "lat": 37.125738,
+    "lon": -113.601928,
+    "query": "1091 North Bluff Street, St George, Utah"
+  },
+  "Mill Creek High School": null,
+  "Promenade 245 North Red Cliffs Dr (Red Lobster)": null,
+  "Transit Center": {
+    "lat": 37.1064094,
+    "lon": -113.562696,
+    "query": "Transit Center, St George, Utah, USA"
+  },
+  "Zion Medical Center": null,
+  "244 West 200 North": {
+    "lat": 37.1117026,
+    "lon": -113.5885095,
+    "query": "244 West 200 North, St George, Utah, USA"
+  },
+  "245 East Tabernacle": {
+    "lat": 37.1082758,
+    "lon": -113.5780971,
+    "query": "245 East Tabernacle, St George, Utah, USA"
+  },
+  "402 North 500 West": {
+    "lat": 37.1151978,
+    "lon": -113.5937996,
+    "query": "402 North 500 West, St George, Utah, USA"
+  },
+  "465 East Tabernacle": {
+    "lat": 37.1082621,
+    "lon": -113.5734853,
+    "query": "465 East Tabernacle, St George, Utah, USA"
+  },
+  "85 South 700 East": {
+    "lat": 37.106765,
+    "lon": -113.5683729,
+    "query": "85 South 700 East, St George, Utah, USA"
+  },
+  "City Office Outbound": null,
+  "1075 South 200 East": {
+    "lat": 37.097391,
+    "lon": -113.579143,
+    "query": "1075 South Temple Street, St. George, Utah 84770, United States"
+  },
+  "Kolob Terrace Road Virgin (Eastbound)": {
+    "lat": 37.109837,
+    "lon": -113.581188,
+    "query": "St. George, Utah, United States"
+  },
+  "Sunset @ Lava Flow": {
+    "lat": 37.134342,
+    "lon": -113.634007,
+    "query": "North Lava Flow Drive, St. George, Utah 84770, United States"
+  },
+  "Dr Volunteer Clinic 1060 East Riverside Drive": {
+    "lat": 37.087846,
+    "lon": -113.56108,
+    "query": "1060 Riverside Drive, St. George, Utah 84790, United States"
+  },
+  "Rec Center": {
+    "lat": 37.109837,
+    "lon": -113.581188,
+    "query": "St. George, Utah, United States"
+  },
+  "Avalon Apartments": {
+    "lat": 37.109837,
+    "lon": -113.581188,
+    "query": "St. George, Utah, United States"
+  },
+  "420 East Tabernacle": {
+    "lat": 37.108187,
+    "lon": -113.574546,
+    "query": "420 East Tabernacle Street, St. George, Utah 84770, United States"
+  },
+  "365 North Valley View": {
+    "lat": 37.109837,
+    "lon": -113.581188,
+    "query": "St. George, Utah, United States"
+  },
+  "Telegraph & Palo Verde": {
+    "lat": 37.109837,
+    "lon": -113.581188,
+    "query": "St. George, Utah, United States"
+  },
+  "700 East/Springhill Drive": {
+    "lat": 37.138452,
+    "lon": -113.497697,
+    "query": "700 East Spring Hill Drive, Washington, Utah 84780, United States"
+  },
+  "Green Valley Market": {
+    "lat": 37.109837,
+    "lon": -113.581188,
+    "query": "St. George, Utah, United States"
+  },
+  "Outback 232 Red Cliffs Drive": {
+    "lat": 37.113874,
+    "lon": -113.554005,
+    "query": "232 Red Cliffs Drive, St. George, Utah 84790, United States"
+  },
+  "Housing Authority 975 North 1725 West": {
+    "lat": 37.124968,
+    "lon": -113.621274,
+    "query": "975 North 1725 West, St. George, Utah 84770, United States"
+  },
+  "55 West 400 South": {
+    "lat": 37.100808,
+    "lon": -113.584525,
+    "query": "55 West 400 South, St. George, Utah 84770, United States"
+  },
+  "Cottonwood Cove Park": {
+    "lat": 37.109837,
+    "lon": -113.581188,
+    "query": "St. George, Utah, United States"
+  },
+  "425 South 200 East": {
+    "lat": 37.101004,
+    "lon": -113.579123,
+    "query": "425 South Temple Street, St. George, Utah 84770, United States"
+  },
+  "Post Office": {
+    "lat": 37.109774,
+    "lon": -113.567927,
+    "query": "East Saint George Boulevard, St. George, Utah 84770, United States"
+  },
+  "990 East Tabernacle": {
+    "lat": 37.108101,
+    "lon": -113.562134,
+    "query": "990 East Tabernacle Street, St. George, Utah 84770, United States"
+  },
+  "1720 North Lava Flow Drive": {
+    "lat": 37.137808,
+    "lon": -113.634481,
+    "query": "1720 North Lava Flow Drive, St. George, Utah 84770, United States"
+  },
+  "The VFW / Lions Club": {
+    "lat": 37.109837,
+    "lon": -113.581188,
+    "query": "St. George, Utah, United States"
+  },
+  "Oasis Palms Apartments": {
+    "lat": 37.109837,
+    "lon": -113.581188,
+    "query": "St. George, Utah, United States"
+  },
+  "Catholic Church": {
+    "lat": 37.096738,
+    "lon": -113.58714,
+    "query": "South Bluff Street, St. George, Utah 84770, United States"
+  },
+  "Salt Lake Express/ South Main Street": {
+    "lat": 37.109837,
+    "lon": -113.581188,
+    "query": "St. George, Utah, United States"
+  },
+  "1675 South Dixie Drive": {
+    "lat": 37.079272,
+    "lon": -113.603397,
+    "query": "1675 South Dixie Drive, St. George, Utah 84770, United States"
+  },
+  "Lins Marketplace 1930 West Sunset Boulevard": {
+    "lat": 37.12422,
+    "lon": -113.624983,
+    "query": "1930 West Sunset Boulevard, St. George, Utah 84770, United States"
+  },
+  "505 South Valley View": {
+    "lat": 37.099646,
+    "lon": -113.618296,
+    "query": "505 South Valley View Drive, St. George, Utah 84770, United States"
+  },
+  "Bluff View/Sunrise": {
+    "lat": 37.109837,
+    "lon": -113.581188,
+    "query": "St. George, Utah, United States"
+  },
+  "660 South Main": {
+    "lat": 37.097165,
+    "lon": -113.583407,
+    "query": "660 South Main Street, St. George, Utah 84770, United States"
+  },
+  "Dixie Center": {
+    "lat": 37.109837,
+    "lon": -113.581188,
+    "query": "St. George, Utah, United States"
+  },
+  "2000 North Lava Flow Drive": {
+    "lat": 37.142953,
+    "lon": -113.635339,
+    "query": "2000 North Lava Flow Drive, St. George, Utah 84770, United States"
+  },
+  "Phoenix Plaza": {
+    "lat": 37.109837,
+    "lon": -113.581188,
+    "query": "St. George, Utah, United States"
+  },
+  "Dixie Drive and Mesa Palms Drive": {
+    "lat": 37.077355,
+    "lon": -113.60079,
+    "query": "Dixie Drive and Mesa Palms Drive, St. George, Utah 84770, United States"
+  },
+  "Bluff View/Victoria Lane": {
+    "lat": 37.109837,
+    "lon": -113.581188,
+    "query": "St. George, Utah, United States"
+  },
+  "Subway Inbound": {
+    "lat": 37.109967,
+    "lon": -113.588537,
+    "query": "West Saint George Boulevard, St. George, Utah 84770, United States"
+  },
+  "Verizon Store": {
+    "lat": 37.096738,
+    "lon": -113.58714,
+    "query": "South Bluff Street, St. George, Utah 84770, United States"
+  },
+  "710 East Tabernacle": {
+    "lat": 37.108137,
+    "lon": -113.568285,
+    "query": "710 East Tabernacle Street, St. George, Utah 84770, United States"
+  },
+  "Carls Jr 1624 West Sunset Boulevard": {
+    "lat": 37.12306,
+    "lon": -113.61809,
+    "query": "1624 West Sunset Boulevard, St. George, Utah 84770, United States"
+  },
+  "Library": {
+    "lat": 37.096738,
+    "lon": -113.58714,
+    "query": "South Bluff Street, St. George, Utah 84770, United States"
+  },
+  "Sunset Corner": {
+    "lat": 37.109837,
+    "lon": -113.581188,
+    "query": "St. George, Utah, United States"
+  },
+  "Community Center": {
+    "lat": 37.134273,
+    "lon": -113.503468,
+    "query": "Community Center Drive, Washington, Utah 84780, United States"
+  },
+  "85 East 100 North": {
+    "lat": 37.17035,
+    "lon": -113.678182,
+    "query": "85 East 100 North, Ivins, Utah 84738, United States"
+  },
+  "55 West Buena Vista Boulevard/North Main": {
+    "lat": 37.13821,
+    "lon": -113.514754,
+    "query": "55 West Buena Vista Boulevard, Washington, Utah 84780, United States"
+  },
+  "Best Western": {
+    "lat": 37.109837,
+    "lon": -113.581188,
+    "query": "St. George, Utah, United States"
+  },
+  "Jiffy Lube": {
+    "lat": 37.096738,
+    "lon": -113.58714,
+    "query": "South Bluff Street, St. George, Utah 84770, United States"
+  },
+  "900 East Student Housing": {
+    "lat": 37.109751,
+    "lon": -113.563111,
+    "query": "900 East Saint George Boulevard, St. George, Utah 84770, United States"
+  },
+  "Lion Boulevard Springdale": {
+    "lat": 37.109837,
+    "lon": -113.581188,
+    "query": "St. George, Utah, United States"
+  },
+  "631 East 100 South": {
+    "lat": 37.106458,
+    "lon": -113.570609,
+    "query": "631 East 100 South, St. George, Utah 84770, United States"
+  },
+  "950 East 700 South": {
+    "lat": 37.096225,
+    "lon": -113.562781,
+    "query": "950 East 700 South, St. George, Utah 84790, United States"
+  },
+  "Jubilee House": {
+    "lat": 37.109837,
+    "lon": -113.581188,
+    "query": "St. George, Utah, United States"
+  },
+  "Firehouse Park": {
+    "lat": 37.109837,
+    "lon": -113.581188,
+    "query": "St. George, Utah, United States"
+  },
+  "Valley View Dr @ Stonebridge Drive": {
+    "lat": 37.109837,
+    "lon": -113.581188,
+    "query": "St. George, Utah, United States"
+  },
+  "272 East Center Street": {
+    "lat": 37.168101,
+    "lon": -113.673119,
+    "query": "272 East Center Street, Ivins, Utah 84738, United States"
+  },
+  "Kolob Terrace Road Virgin (Westbound)": {
+    "lat": 37.109837,
+    "lon": -113.581188,
+    "query": "St. George, Utah, United States"
+  },
+  "Snow Canyon High School": {
+    "lat": 37.109837,
+    "lon": -113.581188,
+    "query": "St. George, Utah, United States"
+  },
+  "Intermountain River Road Clinic": {
+    "lat": 37.109837,
+    "lon": -113.581188,
+    "query": "St. George, Utah, United States"
+  },
+  "Snow Canyon Middle School": {
+    "lat": 37.109837,
+    "lon": -113.581188,
+    "query": "St. George, Utah, United States"
+  },
+  "Valley View @ Stonebridge": {
+    "lat": 37.109837,
+    "lon": -113.581188,
+    "query": "St. George, Utah, United States"
+  },
+  "120 South 700 East": {
+    "lat": 37.106209,
+    "lon": -113.568499,
+    "query": "120 South University Avenue, St. George, Utah 84770, United States"
+  },
+  "Cactus Lane/Quail Ridge Drive": {
+    "lat": 37.109837,
+    "lon": -113.581188,
+    "query": "St. George, Utah, United States"
+  },
+  "Target 225 South River Road": {
+    "lat": 37.104545,
+    "lon": -113.555645,
+    "query": "225 River Road, St. George, Utah 84790, United States"
+  },
+  "210 East Tabernacle": {
+    "lat": 37.108182,
+    "lon": -113.578925,
+    "query": "210 East Tabernacle Street, St. George, Utah 84770, United States"
+  },
+  "1912 West 1575 North": {
+    "lat": 37.135525,
+    "lon": -113.624572,
+    "query": "1912 West 1575 North, St. George, Utah 84770, United States"
+  },
+  "Telegraph at Bella Vista": {
+    "lat": 37.109837,
+    "lon": -113.581188,
+    "query": "St. George, Utah, United States"
+  },
+  "Albertsons Market 745 North Dixie Drive": {
+    "lat": 37.120953,
+    "lon": -113.624526,
+    "query": "745 North Dixie Drive, St. George, Utah 84770, United States"
+  },
+  "Green Valley Condos": {
+    "lat": 37.109837,
+    "lon": -113.581188,
+    "query": "St. George, Utah, United States"
+  },
+  "Tonaquint Park": {
+    "lat": 37.074726,
+    "lon": -113.592772,
+    "query": "South Tonaquint Drive, St. George, Utah 84770, United States"
+  },
+  "Bio Life 816 North 2860 East": {
+    "lat": 37.122409,
+    "lon": -113.525102,
+    "query": "816 N 2860 E, St. George, Utah 84790, United States"
+  },
+  "Subway Outbound": {
+    "lat": 37.109967,
+    "lon": -113.588537,
+    "query": "West Saint George Boulevard, St. George, Utah 84770, United States"
+  },
+  "1300 West Sunset Boulevard": {
+    "lat": 37.123376,
+    "lon": -113.611873,
+    "query": "1300 West Sunset Boulevard, St. George, Utah 84770, United States"
+  },
+  "Harmons": {
+    "lat": 37.073976,
+    "lon": -113.57034,
+    "query": "Harmony Circle, St. George, Utah 84790, United States"
+  },
+  "580 East 700 South": {
+    "lat": 37.096276,
+    "lon": -113.571078,
+    "query": "580 East 700 South, St. George, Utah 84770, United States"
+  },
+  "540 North Dixie Drive": {
+    "lat": 37.116337,
+    "lon": -113.622931,
+    "query": "540 North Dixie Drive, St. George, Utah 84770, United States"
+  },
+  "SW Behavioral Health Center": {
+    "lat": 37.109837,
+    "lon": -113.581188,
+    "query": "St. George, Utah, United States"
+  },
+  "300 North State Street LaVerkin (Eastbound)": {
+    "lat": 37.207871,
+    "lon": -113.270405,
+    "query": "300 North State Street, La Verkin, Utah 84745, United States"
+  },
+  "740 East 700 South": {
+    "lat": 37.096268,
+    "lon": -113.567493,
+    "query": "740 East 700 South, St. George, Utah 84770, United States"
+  },
+  "Park 410 East Center Street": {
+    "lat": 37.168505,
+    "lon": -113.666279,
+    "query": "410 East Center Street, Ivins, Utah 84738, United States"
+  },
+  "City Office Inbound": {
+    "lat": 37.109967,
+    "lon": -113.588537,
+    "query": "West Saint George Boulevard, St. George, Utah 84770, United States"
+  },
+  "Dairy Queen": {
+    "lat": 37.109837,
+    "lon": -113.581188,
+    "query": "St. George, Utah, United States"
+  },
+  "1250 East Snow Canyon Parkway": {
+    "lat": 37.168547,
+    "lon": -113.653315,
+    "query": "1250 Snow Canyon Parkway, Ivins, Utah 84738, United States"
+  },
+  "51 East Telegraph/Post Office": {
+    "lat": 37.109943,
+    "lon": -113.582472,
+    "query": "51 East Saint George Boulevard, St. George, Utah 84770, United States"
+  },
+  "Cactus Lane/North Cactus Lane": {
+    "lat": 37.109837,
+    "lon": -113.581188,
+    "query": "St. George, Utah, United States"
+  },
+  "776 East 600 South": {
+    "lat": 37.097625,
+    "lon": -113.567015,
+    "query": "776 East 600 South, St. George, Utah 84770, United States"
+  },
+  "Homestead Townhomes": {
+    "lat": 37.091624,
+    "lon": -113.605959,
+    "query": "Homestead Circle, St. George, Utah 84770, United States"
+  },
+  "151 West Telegraph": {
+    "lat": 37.129638,
+    "lon": -113.512345,
+    "query": "151 West Telegraph Street, Washington, Utah 84780, United States"
+  },
+  "3400 West Hurricane (Walmart)": {
+    "lat": 37.109837,
+    "lon": -113.581188,
+    "query": "St. George, Utah, United States"
+  },
+  "700 West State Street Hurricane (Eastbound)": {
+    "lat": 37.17683,
+    "lon": -113.30066,
+    "query": "700 West State Street, Hurricane, Utah 84737, United States"
+  },
+  "1130 Zion Park Boulevard (Hampton) Springdale": {
+    "lat": 37.109837,
+    "lon": -113.581188,
+    "query": "St. George, Utah, United States"
+  },
+  "101_Lightfoot\u2019s Chevron": {
+    "lat": 37.096738,
+    "lon": -113.58714,
+    "query": "South Bluff Street, St. George, Utah 84770, United States"
+  },
+  "Veterans Center": {
+    "lat": 37.109837,
+    "lon": -113.581188,
+    "query": "St. George, Utah, United States"
+  },
+  "Ace Hardware": {
+    "lat": 37.096738,
+    "lon": -113.58714,
+    "query": "South Bluff Street, St. George, Utah 84770, United States"
+  },
+  "Sierra Pointe": {
+    "lat": 37.109837,
+    "lon": -113.581188,
+    "query": "St. George, Utah, United States"
+  },
+  "Buena Vista Boulevard/North Millcreek Springs Drive": {
+    "lat": 37.109837,
+    "lon": -113.581188,
+    "query": "St. George, Utah, United States"
+  },
+  "Opera House": {
+    "lat": 37.109837,
+    "lon": -113.581188,
+    "query": "St. George, Utah, United States"
+  },
+  "243 West 400 South": {
+    "lat": 37.101111,
+    "lon": -113.588561,
+    "query": "243 West 400 South, St. George, Utah 84770, United States"
+  },
+  "Wal-Mart": {
+    "lat": 37.109967,
+    "lon": -113.588537,
+    "query": "West Saint George Boulevard, St. George, Utah 84770, United States"
+  },
+  "Costco 850 North 2860 East": {
+    "lat": 37.122693,
+    "lon": -113.525848,
+    "query": "2860 East 850 North, St. George, Utah 84790, United States"
+  },
+  "190 North 1100 East": {
+    "lat": 37.108569,
+    "lon": -113.560008,
+    "query": "190 North 1100 East, St. George, Utah 84770, United States"
+  },
+  "1100 East & Pine Valley Street": {
+    "lat": 37.137191,
+    "lon": -113.490568,
+    "query": "1100 Pine Valley Street, Washington, Utah 84780, United States"
+  },
+  "Red Cliffs Mall (Barnes & Noble)": null,
+  "112 South 300 West": {
+    "lat": 37.106248,
+    "lon": -113.590106,
+    "query": "112 South 300 West, St. George, Utah 84770, United States"
+  },
+  "IHC Sunset Clinic": {
+    "lat": 37.109837,
+    "lon": -113.581188,
+    "query": "St. George, Utah, United States"
+  },
+  "Red Mountain Elementary": {
+    "lat": 37.109837,
+    "lon": -113.581188,
+    "query": "St. George, Utah, United States"
+  },
+  "Kings Row @ 1100 East & Kings Highway": {
+    "lat": 37.109837,
+    "lon": -113.581188,
+    "query": "St. George, Utah, United States"
+  },
+  "335 North Main": {
+    "lat": 37.113563,
+    "lon": -113.583276,
+    "query": "335 North Main Street, St. George, Utah 84770, United States"
+  },
+  "300 North State Street LaVerkin (Westbound)": {
+    "lat": 37.207871,
+    "lon": -113.270405,
+    "query": "300 North State Street, La Verkin, Utah 84745, United States"
+  },
+  "700 West State Street Hurricane (Westbound)": {
+    "lat": 37.127863,
+    "lon": -113.521739,
+    "query": "700 West Telegraph Street, Washington, Utah 84780, United States"
+  },
+  "950 North Dixie Downs Road": {
+    "lat": 37.125127,
+    "lon": -113.623813,
+    "query": "950 North Dixie Downs Road, St. George, Utah 84770, United States"
+  },
+  "Summer Hills Apartments": {
+    "lat": 37.109837,
+    "lon": -113.581188,
+    "query": "St. George, Utah, United States"
+  },
+  "Ivins City Office": {
+    "lat": 37.109837,
+    "lon": -113.581188,
+    "query": "St. George, Utah, United States"
+  },
+  "Vista Elementary": {
+    "lat": 37.109837,
+    "lon": -113.581188,
+    "query": "St. George, Utah, United States"
+  },
+  "930 East Center": {
+    "lat": 37.109746,
+    "lon": -113.562041,
+    "query": "930 East Saint George Boulevard, St. George, Utah 84770, United States"
+  },
+  "04_592 South 700 East": {
+    "lat": 37.098261,
+    "lon": -113.568815,
+    "query": "592 South University Avenue, St. George, Utah 84770, United States"
+  },
+  "Learning Center (Call) 2044 S Mesa Palms Drive": {
+    "lat": 37.07329,
+    "lon": -113.602937,
+    "query": "2044 South Mesa Palms Drive, St. George, Utah 84770, United States"
+  },
+  "1730 West 100 North": {
+    "lat": 37.109837,
+    "lon": -113.581188,
+    "query": "St. George, Utah, United States"
+  },
+  "Wal Mart 698 West Telegraph": {
+    "lat": 37.127874,
+    "lon": -113.521709,
+    "query": "698 West Telegraph Street, Washington, Utah 84780, United States"
+  },
+  "705 South 200 East": {
+    "lat": 37.097195,
+    "lon": -113.579144,
+    "query": "705 South Temple Street, St. George, Utah 84770, United States"
+  },
+  "Buena Vista/Calle Del Sol": {
+    "lat": 37.109837,
+    "lon": -113.581188,
+    "query": "St. George, Utah, United States"
+  },
+  "1210 Zion Park Boulevard (Bit & Spur) Springdale": {
+    "lat": 37.109837,
+    "lon": -113.581188,
+    "query": "St. George, Utah, United States"
+  },
+  "Library 250 North 300 East": {
+    "lat": 37.13467,
+    "lon": -113.504874,
+    "query": "250 North 300 East, Washington, Utah 84780, United States"
+  },
+  "135 East 300 North": {
+    "lat": 37.113335,
+    "lon": -113.581162,
+    "query": "135 East 300 North, St. George, Utah 84770, United States"
+  },
+  "Sandtown": {
+    "lat": 37.096738,
+    "lon": -113.58714,
+    "query": "South Bluff Street, St. George, Utah 84770, United States"
+  },
+  "Paradise Canyon Elementary": {
+    "lat": 37.109837,
+    "lon": -113.581188,
+    "query": "St. George, Utah, United States"
+  },
+  "Jack in the Box": {
+    "lat": 37.109837,
+    "lon": -113.581188,
+    "query": "St. George, Utah, United States"
+  },
+  "Bella Vista Apartments": {
+    "lat": 37.109837,
+    "lon": -113.581188,
+    "query": "St. George, Utah, United States"
+  },
+  "Dixie Drive @ Black Ridge Drive": {
+    "lat": 37.109837,
+    "lon": -113.581188,
+    "query": "St. George, Utah, United States"
+  },
+  "305 South 200 East": {
+    "lat": 37.103089,
+    "lon": -113.579108,
+    "query": "305 South Temple Street, St. George, Utah 84770, United States"
+  },
+  "Black Desert Resort": {
+    "lat": 37.012019,
+    "lon": -113.509693,
+    "query": "Desert Resort Court, St. George, Utah 84790, United States"
+  },
+  "Dixie High School": {
+    "lat": 37.109837,
+    "lon": -113.581188,
+    "query": "St. George, Utah, United States"
+  },
+  "1670 South 120 East (Dixie Center)": {
+    "lat": 37.076943,
+    "lon": -113.580945,
+    "query": "South 120 East Street, St. George, Utah 84790, United States"
+  },
+  "Red Cliff Mall": {
+    "lat": 37.109837,
+    "lon": -113.581188,
+    "query": "St. George, Utah, United States"
+  },
+  "1957 North 2100 West": {
+    "lat": 37.142278,
+    "lon": -113.628373,
+    "query": "1957 North 2100 West, St. George, Utah 84770, United States"
+  },
+  "1205 North 1650 West": {
+    "lat": 37.128691,
+    "lon": -113.619279,
+    "query": "1205 North 1650 West, St. George, Utah 84770, United States"
+  },
+  "124 North Valley View Drive": {
+    "lat": 37.110644,
+    "lon": -113.611045,
+    "query": "124 North Valley View Drive, St. George, Utah 84770, United States"
+  },
+  "Tonaquint Business Park": {
+    "lat": 37.074726,
+    "lon": -113.592772,
+    "query": "South Tonaquint Drive, St. George, Utah 84770, United States"
+  },
+  "390 W Old Highway 91": {
+    "lat": 37.156275,
+    "lon": -113.688003,
+    "query": "390 Old Highway 91, Ivins, Utah 84738, United States"
+  },
+  "144 Cactus Lane/Buena Vista Boulevard": {
+    "lat": 37.109837,
+    "lon": -113.581188,
+    "query": "St. George, Utah, United States"
+  },
+  "1925 West 1465 North": {
+    "lat": 37.133437,
+    "lon": -113.624795,
+    "query": "1925 West 1465 North, St. George, Utah 84770, United States"
+  },
+  "Dixie Dr @ Sunbrook Drive": {
+    "lat": 37.109837,
+    "lon": -113.581188,
+    "query": "St. George, Utah, United States"
+  },
+  "540 North Valley View Drive": {
+    "lat": 37.117377,
+    "lon": -113.609689,
+    "query": "540 North Valley View Drive, St. George, Utah 84770, United States"
+  },
+  "320 South 700 East": {
+    "lat": 37.101833,
+    "lon": -113.568525,
+    "query": "320 South University Avenue, St. George, Utah 84770, United States"
+  },
+  "1367 West 100 North": {
+    "lat": 37.109837,
+    "lon": -113.581188,
+    "query": "St. George, Utah, United States"
+  },
+  "955 South 200 East": {
+    "lat": 37.097361,
+    "lon": -113.579143,
+    "query": "955 South Temple Street, St. George, Utah 84770, United States"
+  },
+  "Cache Valley Bank": {
+    "lat": 37.109837,
+    "lon": -113.581188,
+    "query": "St. George, Utah, United States"
+  },
+  "St. George Clinic": {
+    "lat": 37.109837,
+    "lon": -113.581188,
+    "query": "St. George, Utah, United States"
+  },
+  "795 South 200 East": {
+    "lat": 37.097255,
+    "lon": -113.579144,
+    "query": "795 South Temple Street, St. George, Utah 84770, United States"
+  },
+  "5300 West Regional Park Road DMV Hurricane": {
+    "lat": 37.109837,
+    "lon": -113.581188,
+    "query": "St. George, Utah, United States"
+  },
+  "Buena Vista (Boiler Park) Washington": {
+    "lat": 37.109837,
+    "lon": -113.581188,
+    "query": "St. George, Utah, United States"
+  }
+}
